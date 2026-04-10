@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BFC Gestión</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Firebase SDKs -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, addDoc, query, orderBy, Timestamp, writeBatch, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+// ══════════════════════════════════════════
+// FIREBASE CONFIG
+// ══════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyDKLSj12ydlMUMdKc0sc1LlJ-Rm4rEjLSo",
+  authDomain: "bfc-gestion.firebaseapp.com",
+  projectId: "bfc-gestion",
+  storageBucket: "bfc-gestion.firebasestorage.app",
+  messagingSenderId: "103152838657",
+  appId: "1:103152838657:web:69e2cbc96e2407d953f800"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+// ══════════════════════════════════════════
+// ESTADO
+// ══════════════════════════════════════════
+const S = { personal:[], pagos:[], proyData:[], importData:[], cur:null, pagoEditId:null };
+const CT_ROLES = ['DT','Ayudante de Campo','PF'];
+const ROLES    = ['Jugador','DT','Ayudante de Campo','PF','Médico','Utilero','Mantenimiento','Entrenador de Arqueros','Otro'];
+const CATS_DIV = ['Primera División','Reserva','4ta División','5ta División','6ta División','7ma División','8va División','9na División','Infantiles 2013','Infantiles 2014','Infantiles 2015','Infantiles 2016'];
+const ESCALAFONES = ['A','B','C','D'];
+const TEMPLATE_COLS = ['id','nombre','dni','fechaNac','tel','direccion','procedencia','cuit','banco','cbu','alias','emergNombre','emergTel','rol','categoria','basico','bono','estado','notas','escalafon'];
+
+// ══════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════
+onAuthStateChanged(auth, user => {
+  if (user) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    document.getElementById('app').style.flexDirection = 'column';
+    document.getElementById('tu').textContent = user.email;
+    loadAll();
+  } else {
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+  }
+});
+
+document.getElementById('lp').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.getElementById('lu').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('lp').focus(); });
+
+async function doLogin() {
+  const email = document.getElementById('lu').value.trim();
+  const pass  = document.getElementById('lp').value;
+  if (!email || !pass) { document.getElementById('lerr').textContent = 'Completá los campos'; return; }
+  load(true);
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+    document.getElementById('lerr').textContent = '';
+  } catch(e) {
+    document.getElementById('lerr').textContent = 'Email o contraseña incorrectos';
+  }
+  load(false);
+}
+window.doLogin = doLogin;
+
+async function logout() {
+  await signOut(auth);
+  document.getElementById('lu').value = '';
+  document.getElementById('lp').value = '';
+}
+window.logout = logout;
+
+// ══════════════════════════════════════════
+// FIRESTORE — PERSONAL
+// ══════════════════════════════════════════
+async function fsGetPersonal() {
+  const snap = await getDocs(collection(db, 'personal'));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function fsSavePersona(persona) {
+  const id = persona.id || autoId();
+  const data = { ...persona, id };
+  delete data._firestoreId;
+  await setDoc(doc(db, 'personal', id), data);
+  return id;
+}
+
+async function fsDeletePersona(id) {
+  await deleteDoc(doc(db, 'personal', id));
+}
+
+async function fsDarDeBaja(id, motivo) {
+  const ref  = doc(db, 'personal', id);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+  const p = snap.data();
+  await setDoc(ref, { ...p, estado: 'Baja' });
+  await addDoc(collection(db, 'bajas'), {
+    personaId: id, nombre: p.nombre, rol: p.rol,
+    categoria: p.categoria || '', fechaBaja: new Date().toLocaleDateString('es-AR'), motivo: motivo || ''
+  });
+}
+
+async function fsReactivar(id) {
+  const ref  = doc(db, 'personal', id);
+  const snap = await getDoc(ref);
+  if (snap.exists()) await setDoc(ref, { ...snap.data(), estado: 'Activo' });
+}
+
+// ══════════════════════════════════════════
+// FIRESTORE — PAGOS
+// ══════════════════════════════════════════
+async function fsGetPagos() {
+  const snap = await getDocs(collection(db, 'pagos'));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
+}
+
+async function fsRegistrarPago(periodo, detalles, observaciones) {
+  const id    = autoId();
+  const fecha = new Date().toLocaleDateString('es-AR');
+  const total = detalles.reduce((s,d) => s + (Number(d.monto)||0), 0);
+  await setDoc(doc(db, 'pagos', id), { id, fecha, periodo, totalAbonado: total, observaciones: observaciones||'', detalles });
+  return id;
+}
+
+async function fsActualizarPago(pagoId, periodo, detalles, observaciones) {
+  const ref  = doc(db, 'pagos', pagoId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+  const total = detalles.reduce((s,d) => s + (Number(d.monto)||0), 0);
+  await setDoc(ref, { ...snap.data(), periodo, totalAbonado: total, observaciones: observaciones||'', detalles });
+}
+
+async function fsEliminarPago(pagoId) {
+  await deleteDoc(doc(db, 'pagos', pagoId));
+}
+
+// ══════════════════════════════════════════
+// CARGA
+// ══════════════════════════════════════════
+async function loadAll() {
+  load(true);
+  try { S.personal = await fsGetPersonal(); } catch(e) { S.personal = []; toast('Error personal: '+e.message, true); }
+  try { S.pagos    = await fsGetPagos();    } catch(e) { S.pagos    = []; toast('Error pagos: '+e.message, true); }
+  renderPersonal(); renderBajas(); renderPagos(); renderDash(); initProy();
+  load(false);
+}
+window.loadAll = loadAll;
+
+async function loadPersonal() {
+  load(true);
+  try { S.personal = await fsGetPersonal(); } catch(e) { S.personal = []; }
+  renderPersonal(); renderBajas(); renderDash(); initProy();
+  load(false);
+}
+window.loadPersonal = loadPersonal;
+
+// ══════════════════════════════════════════
+// PERSONAL — RENDER
+// ══════════════════════════════════════════
+let _sortP = { key:'nombre', dir:1 };
+
+function setSortP(key) {
+  if (_sortP.key===key) _sortP.dir*=-1; else { _sortP.key=key; _sortP.dir=1; }
+  document.querySelectorAll('#tab-personal thead th.sortable').forEach(th => th.classList.remove('sort-asc','sort-desc'));
+  const thMap = {nombre:0,rol:1,categoria:2,escalafon:3,basico:4,bono:5,total:6};
+  const th = document.querySelectorAll('#tab-personal thead th.sortable')[thMap[key]];
+  if (th) th.classList.add(_sortP.dir===1?'sort-asc':'sort-desc');
+  renderPersonal();
+}
+window.setSortP = setSortP;
+
+function renderPersonal() {
+  const q      = (document.getElementById('fs').value||'').toLowerCase();
+  const rolFil = document.getElementById('fr').value;
+  const catFil = document.getElementById('fcat').value;
+  const escFil = document.getElementById('fesc').value;
+  const est    = document.getElementById('fe').value;
+  const isCT   = rolFil==='__CT__';
+
+  let rows = S.personal.filter(p => {
+    if (est    && p.estado!==est)       return false;
+    if (catFil && p.categoria!==catFil) return false;
+    if (escFil && p.escalafon!==escFil) return false;
+    if (q      && !p.nombre.toLowerCase().includes(q)) return false;
+    if (isCT)   return CT_ROLES.includes(p.rol);
+    if (rolFil) return p.rol===rolFil;
+    return true;
+  });
+
+  rows = [...rows].sort((a,b) => {
+    let va,vb;
+    if (_sortP.key==='total')                       { va=(a.basico||0)+(a.bono||0); vb=(b.basico||0)+(b.bono||0); }
+    else if (_sortP.key==='basico'||_sortP.key==='bono') { va=a[_sortP.key]||0; vb=b[_sortP.key]||0; }
+    else { va=(a[_sortP.key]||'').toString().toLowerCase(); vb=(b[_sortP.key]||'').toString().toLowerCase(); }
+    return va<vb?-_sortP.dir:va>vb?_sortP.dir:0;
+  });
+
+  const totBas = rows.reduce((s,p)=>s+(p.basico||0),0);
+  const totBon = rows.reduce((s,p)=>s+(p.bono||0),0);
+  document.getElementById('ptb-count').textContent = rows.length;
+  document.getElementById('ptb-bas').textContent   = f(totBas);
+  document.getElementById('ptb-bon').textContent   = f(totBon);
+  document.getElementById('ptb-tot').textContent   = f(totBas+totBon);
+
+  const tb = document.getElementById('tb-p');
+  if (!rows.length) { tb.innerHTML='<tr class="empty"><td colspan="9">Sin resultados</td></tr>'; return; }
+
+  const useGroups = (!rolFil||isCT)&&!catFil&&!escFil&&!q;
+  if (useGroups) {
+    const groups = {};
+    rows.forEach(p => { if(!groups[p.rol]) groups[p.rol]=[]; groups[p.rol].push(p); });
+    let html='';
+    Object.entries(groups).forEach(([rol,gRows]) => {
+      const gt = gRows.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
+      html += `<tr class="group-hd"><td colspan="9">${x(rol)} — ${gRows.length} persona${gRows.length>1?'s':''} · ${f(gt)}</td></tr>`;
+      html += gRows.map(renderPersonaRow).join('');
+    });
+    tb.innerHTML = html;
+  } else {
+    tb.innerHTML = rows.map(renderPersonaRow).join('');
+  }
+}
+window.renderPersonal = renderPersonal;
+
+function renderPersonaRow(p) {
+  const eb = p.escalafon ? `<span class="badge b${p.escalafon.toLowerCase()}">${p.escalafon}</span>` : '—';
+  return `<tr onclick="openFicha('${p.id}')">
+    <td class="nm">${x(p.nombre)}</td>
+    <td>${x(p.rol)}</td>
+    <td style="font-size:11px;color:var(--txt2)">${x(p.categoria||'—')}</td>
+    <td>${eb}</td>
+    <td class="mo">${f(p.basico)}</td>
+    <td class="mo">${f(p.bono)}</td>
+    <td class="mo" style="color:var(--txt)">${f((p.basico||0)+(p.bono||0))}</td>
+    <td><span class="badge b${p.estado==='Activo'?'activo':'baja'}">${p.estado}</span></td>
+    <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openMoPersona('${p.id}')">Editar</button></td>
+  </tr>`;
+}
+
+function renderBajas() {
+  const bajas = S.personal.filter(p=>p.estado==='Baja');
+  const tb    = document.getElementById('tb-b');
+  if (!bajas.length) { tb.innerHTML='<tr class="empty"><td colspan="6">Sin bajas registradas</td></tr>'; return; }
+  tb.innerHTML = bajas.map(p => `<tr>
+    <td class="nm">${x(p.nombre)}</td><td>${x(p.rol)}</td><td>${x(p.categoria||'—')}</td>
+    <td>—</td><td>${x(p.notas||'—')}</td>
+    <td style="display:flex;gap:5px">
+      <button class="btn btn-ghost btn-sm" onclick="reactivar('${p.id}')">Reactivar</button>
+      <button class="btn btn-danger btn-sm" onclick="eliminar('${p.id}')">Eliminar</button>
+    </td></tr>`).join('');
+}
+
+// ══════════════════════════════════════════
+// MODAL PERSONA
+// ══════════════════════════════════════════
+function openMoPersona(id) {
+  const p = id ? S.personal.find(z=>z.id===id) : null;
+  document.getElementById('mo-p-title').textContent = p ? 'Editar Persona' : 'Nueva Persona';
+  const map = {
+    'p-id':'id','p-nombre':'nombre','p-dni':'dni','p-fnac':'fechaNac',
+    'p-tel':'tel','p-dir':'direccion','p-proc':'procedencia',
+    'p-cuit':'cuit','p-banco':'banco','p-cbu':'cbu','p-alias':'alias',
+    'p-en':'emergNombre','p-et':'emergTel','p-rol':'rol',
+    'p-cat':'categoria','p-esc':'escalafon',
+    'p-est':'estado','p-bas':'basico','p-bon':'bono','p-notas':'notas'
+  };
+  Object.entries(map).forEach(([elId,key]) => {
+    const el = document.getElementById(elId);
+    if (el) el.value = p ? (p[key]!=null?p[key]:'') : (key==='estado'?'Activo':'');
+  });
+  document.getElementById('mo-persona').classList.add('open');
+}
+window.openMoPersona = openMoPersona;
+window.closeMoPersona = () => document.getElementById('mo-persona').classList.remove('open');
+
+async function savePersona() {
+  const nombre = document.getElementById('p-nombre').value.trim();
+  const rol    = document.getElementById('p-rol').value;
+  if (!nombre) { toast('El nombre es requerido',true); return; }
+  if (!rol)    { toast('El rol es requerido',true); return; }
+  const persona = {
+    id:          document.getElementById('p-id').value || autoId(),
+    nombre, rol,
+    dni:         document.getElementById('p-dni').value,
+    fechaNac:    document.getElementById('p-fnac').value,
+    tel:         document.getElementById('p-tel').value,
+    direccion:   document.getElementById('p-dir').value,
+    procedencia: document.getElementById('p-proc').value,
+    cuit:        document.getElementById('p-cuit').value,
+    banco:       document.getElementById('p-banco').value,
+    cbu:         document.getElementById('p-cbu').value,
+    alias:       document.getElementById('p-alias').value,
+    emergNombre: document.getElementById('p-en').value,
+    emergTel:    document.getElementById('p-et').value,
+    categoria:   document.getElementById('p-cat').value,
+    escalafon:   document.getElementById('p-esc').value,
+    basico:      Number(document.getElementById('p-bas').value)||0,
+    bono:        Number(document.getElementById('p-bon').value)||0,
+    estado:      document.getElementById('p-est').value,
+    notas:       document.getElementById('p-notas').value
+  };
+  load(true);
+  try {
+    await fsSavePersona(persona);
+    await loadPersonal();
+    window.closeMoPersona();
+    toast('Guardado correctamente');
+  } catch(e) { toast('Error: '+e.message,true); }
+  load(false);
+}
+window.savePersona = savePersona;
+
+// ══════════════════════════════════════════
+// FICHA
+// ══════════════════════════════════════════
+function openFicha(id) {
+  const p = S.personal.find(z=>z.id===id);
+  if (!p) return;
+  S.cur = p;
+  document.getElementById('ficha-title').textContent = p.nombre;
+  document.getElementById('ficha-baja-btn').style.display = p.estado==='Baja'?'none':'';
+  const eb = p.escalafon ? `<span class="badge b${p.escalafon.toLowerCase()}">${p.escalafon}</span>` : '—';
+  document.getElementById('ficha-body').innerHTML = `
+    <div class="ficha-g">
+      <div class="ficha-sec"><h4>Identificación</h4>
+        <div class="fr"><span class="fk">DNI</span><span class="fv">${x(p.dni)||'—'}</span></div>
+        <div class="fr"><span class="fk">Nacimiento</span><span class="fv">${x(p.fechaNac)||'—'}</span></div>
+        <div class="fr"><span class="fk">Procedencia</span><span class="fv">${x(p.procedencia)||'—'}</span></div>
+        <div class="fr"><span class="fk">Estado</span><span class="fv"><span class="badge b${p.estado==='Activo'?'activo':'baja'}">${p.estado}</span></span></div>
+      </div>
+      <div class="ficha-sec"><h4>Contacto</h4>
+        <div class="fr"><span class="fk">Teléfono</span><span class="fv">${x(p.tel)||'—'}</span></div>
+        <div class="fr"><span class="fk">Dirección</span><span class="fv">${x(p.direccion)||'—'}</span></div>
+        <div class="fr"><span class="fk">Emergencia</span><span class="fv">${x(p.emergNombre)||'—'}${p.emergTel?' · '+x(p.emergTel):''}</span></div>
+      </div>
+      <div class="ficha-sec"><h4>Rol y Remuneración</h4>
+        <div class="fr"><span class="fk">Rol</span><span class="fv">${x(p.rol)||'—'}</span></div>
+        <div class="fr"><span class="fk">Categoría</span><span class="fv">${x(p.categoria)||'—'}</span></div>
+        <div class="fr"><span class="fk">Escalafón</span><span class="fv">${eb}</span></div>
+        <div class="fr"><span class="fk">Básico</span><span class="fv">${f(p.basico)}</span></div>
+        <div class="fr"><span class="fk">Bono</span><span class="fv">${f(p.bono)}</span></div>
+        <div class="fr"><span class="fk">Total mensual</span><span class="fv" style="color:var(--green)">${f((p.basico||0)+(p.bono||0))}</span></div>
+      </div>
+      <div class="ficha-sec"><h4>Datos Bancarios</h4>
+        <div class="fr"><span class="fk">CUIT</span><span class="fv">${x(p.cuit)||'—'}</span></div>
+        <div class="fr"><span class="fk">Banco</span><span class="fv">${x(p.banco)||'—'}</span></div>
+        <div class="fr"><span class="fk">CBU</span><span class="fv">${x(p.cbu)||'—'}</span></div>
+        <div class="fr"><span class="fk">Alias</span><span class="fv">${x(p.alias)||'—'}</span></div>
+      </div>
+    </div>
+    ${p.notas?`<div style="margin-top:10px;padding:10px;background:var(--bg2);border:1px solid var(--border);font-size:11px;color:var(--txt3)">${x(p.notas)}</div>`:''}`;
+  document.getElementById('mo-ficha').classList.add('open');
+}
+window.openFicha = openFicha;
+window.closeFicha = () => document.getElementById('mo-ficha').classList.remove('open');
+window.editFromFicha = () => { window.closeFicha(); openMoPersona(S.cur.id); };
+
+window.startBaja = () => {
+  document.getElementById('baja-mot').value='';
+  window.closeFicha();
+  document.getElementById('mo-baja').classList.add('open');
+};
+async function confirmarBaja() {
+  load(true);
+  try {
+    await fsDarDeBaja(S.cur.id, document.getElementById('baja-mot').value.trim());
+    document.getElementById('mo-baja').classList.remove('open');
+    await loadPersonal();
+    toast('Baja registrada');
+  } catch(e) { toast('Error: '+e.message,true); }
+  load(false);
+}
+window.confirmarBaja = confirmarBaja;
+
+async function reactivar(id) {
+  if (!confirm('¿Reactivar este registro?')) return;
+  load(true);
+  try { await fsReactivar(id); await loadPersonal(); toast('Reactivado'); }
+  catch(e) { toast('Error: '+e.message,true); }
+  load(false);
+}
+window.reactivar = reactivar;
+
+async function eliminar(id) {
+  if (!confirm('¿Eliminar permanentemente? Esta acción no se puede deshacer.')) return;
+  load(true);
+  try { await fsDeletePersona(id); await loadPersonal(); toast('Eliminado'); }
+  catch(e) { toast('Error: '+e.message,true); }
+  load(false);
+}
+window.eliminar = eliminar;
+
+// ══════════════════════════════════════════
+// PAGOS
+// ══════════════════════════════════════════
+function renderPagos() {
+  document.getElementById('pag-hist').style.display = 'block';
+  const lp = document.getElementById('lp-list');
+  if (!S.pagos.length) {
+    lp.innerHTML = '<div style="padding:20px;border:1px solid var(--border);color:var(--txt3);font-size:12px;text-align:center">Sin pagos registrados</div>';
+    return;
+  }
+  lp.innerHTML = [...S.pagos].reverse().map(p => `
+    <div class="pago-item" onclick="showNuevoPago('${p.id}')">
+      <div>
+        <div class="pago-periodo">${x(p.periodo||'—')}</div>
+        <div class="pago-fecha">${x(p.fecha||'')}${p.observaciones?' · '+x(p.observaciones):''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="pago-monto">${f(p.totalAbonado)}</div>
+        <span style="font-size:10px;color:var(--txt3);border:1px solid var(--border);padding:2px 7px">Editar</span>
+      </div>
+    </div>`).join('');
+}
+
+async function showNuevoPago(pagoId) {
+  S.pagoEditId = pagoId || null;
+  document.getElementById('pag-hist').style.display = 'none';
+  document.getElementById('pag-form').style.display = 'block';
+  document.getElementById('pag-form-title').textContent = pagoId ? 'Editar Pago' : 'Nueva Orden de Pago';
+  document.getElementById('pag-save-btn').textContent   = pagoId ? 'Guardar cambios' : 'Registrar';
+  document.getElementById('pag-del-btn').style.display  = pagoId ? '' : 'none';
+  document.getElementById('pp-cat').value = '';
+
+  const activos = S.personal.filter(p=>p.estado==='Activo');
+
+  if (pagoId) {
+    const pago = S.pagos.find(p=>p.id===pagoId);
+    document.getElementById('pp').value = pago?.periodo||'';
+    document.getElementById('po').value = pago?.observaciones||'';
+    const detMap = {};
+    (pago?.detalles||[]).forEach(d => { detMap[d.personaId] = d.monto; });
+    document.getElementById('pgrid').innerHTML = activos.map(p => {
+      const enDet = p.id in detMap;
+      const monto = enDet ? detMap[p.id] : ((p.basico||0)+(p.bono||0));
+      return `<div class="pgr" data-id="${p.id}" data-nombre="${x(p.nombre)}" data-rol="${x(p.rol)}" data-cat="${x(p.categoria||'')}">
+        <span>${x(p.nombre)}</span><span>${x(p.rol)}</span>
+        <input type="number" class="pm" value="${monto}" min="0" oninput="calcPagTotal()">
+        <div class="pgr-chk"><input type="checkbox" class="pc" ${enDet?'checked':''} onchange="calcPagTotal()"></div>
+      </div>`;
+    }).join('');
+  } else {
+    document.getElementById('pp').value = '';
+    document.getElementById('po').value = '';
+    document.getElementById('pgrid').innerHTML = activos.map(p => `
+      <div class="pgr" data-id="${p.id}" data-nombre="${x(p.nombre)}" data-rol="${x(p.rol)}" data-cat="${x(p.categoria||'')}">
+        <span>${x(p.nombre)}</span><span>${x(p.rol)}</span>
+        <input type="number" class="pm" value="${(p.basico||0)+(p.bono||0)}" min="0" oninput="calcPagTotal()">
+        <div class="pgr-chk"><input type="checkbox" class="pc" checked onchange="calcPagTotal()"></div>
+      </div>`).join('');
+  }
+  calcPagTotal();
+}
+window.showNuevoPago = showNuevoPago;
+
+window.hidePagoForm = () => {
+  document.getElementById('pag-hist').style.display = 'block';
+  document.getElementById('pag-form').style.display = 'none';
+  S.pagoEditId = null;
+};
+
+window.filtrarPagoGrid = () => {
+  const cat = document.getElementById('pp-cat').value;
+  document.querySelectorAll('.pgr').forEach(r => {
+    r.style.display = (!cat || r.dataset.cat===cat) ? '' : 'none';
+  });
+  calcPagTotal();
+};
+
+function calcPagTotal() {
+  let t=0;
+  document.querySelectorAll('.pgr').forEach(r => {
+    if (r.style.display!=='none' && r.querySelector('.pc').checked)
+      t += parseFloat(r.querySelector('.pm').value)||0;
+  });
+  document.getElementById('ptot').textContent = f(t);
+}
+window.calcPagTotal = calcPagTotal;
+
+async function guardarPago() {
+  const periodo = document.getElementById('pp').value.trim();
+  if (!periodo) { toast('Ingresá el período',true); return; }
+  const detalles = [];
+  document.querySelectorAll('.pgr').forEach(r => {
+    if (r.style.display!=='none' && r.querySelector('.pc').checked)
+      detalles.push({ personaId:r.dataset.id, nombre:r.dataset.nombre, monto:parseFloat(r.querySelector('.pm').value)||0 });
+  });
+  if (!detalles.length) { toast('Seleccioná al menos una persona',true); return; }
+  load(true);
+  try {
+    if (S.pagoEditId) {
+      await fsActualizarPago(S.pagoEditId, periodo, detalles, document.getElementById('po').value);
+      toast('Pago actualizado');
+    } else {
+      await fsRegistrarPago(periodo, detalles, document.getElementById('po').value);
+      toast('Pago registrado');
+    }
+    S.pagos = await fsGetPagos();
+    window.hidePagoForm();
+    renderPagos();
+  } catch(e) { toast('Error: '+e.message,true); }
+  load(false);
+}
+window.guardarPago = guardarPago;
+
+async function eliminarPagoActual() {
+  const pago = S.pagos.find(p=>p.id===S.pagoEditId);
+  if (!confirm(`¿Eliminar el pago "${pago?.periodo||''}"?`)) return;
+  load(true);
+  try {
+    await fsEliminarPago(S.pagoEditId);
+    S.pagos = await fsGetPagos();
+    window.hidePagoForm();
+    renderPagos();
+    toast('Pago eliminado');
+  } catch(e) { toast('Error: '+e.message,true); }
+  load(false);
+}
+window.eliminarPagoActual = eliminarPagoActual;
+
+window.exportXLS = () => {
+  const per  = document.getElementById('pp').value||'Pago';
+  const rows = [['Nombre','Rol','Monto','CBU','Alias','CUIT','Banco']];
+  document.querySelectorAll('.pgr').forEach(r => {
+    if (r.style.display==='none'||!r.querySelector('.pc').checked) return;
+    const p = S.personal.find(z=>z.id===r.dataset.id)||{};
+    rows.push([r.dataset.nombre, r.dataset.rol, parseFloat(r.querySelector('.pm').value)||0,
+      p.cbu||'', p.alias||'', p.cuit||'', p.banco||'']);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(rows); const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Pago');
+  XLSX.writeFile(wb,`BFC_Pago_${per.replace(/\s/g,'_')}.xlsx`);
+};
+
+window.exportPDF = () => {
+  const per   = document.getElementById('pp').value||'—';
+  const obs   = document.getElementById('po').value;
+  const rows  = [];
+  document.querySelectorAll('.pgr').forEach(r => {
+    if (r.style.display==='none'||!r.querySelector('.pc').checked) return;
+    const p = S.personal.find(z=>z.id===r.dataset.id)||{};
+    rows.push(`<tr><td>${x(r.dataset.nombre)}</td><td>${x(r.dataset.rol)}</td><td class="mono">${x(p.cbu||'—')}</td><td class="mono">${x(p.alias||'—')}</td><td class="mono">${x(p.cuit||'—')}</td><td>${x(p.banco||'—')}</td><td class="r"><strong>${f(parseFloat(r.querySelector('.pm').value)||0)}</strong></td></tr>`);
+  });
+  const total = document.getElementById('ptot').textContent;
+  const html  = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:sans-serif;padding:28px;color:#111;font-size:11px}h1{font-size:16px;margin-bottom:2px}.sub{color:#666;font-size:10px;margin:3px 0 18px}table{width:100%;border-collapse:collapse}th{background:#f3f3f3;border-bottom:2px solid #ddd;padding:6px 8px;text-align:left;font-size:9px;letter-spacing:.5px;text-transform:uppercase}td{padding:6px 8px;border-bottom:1px solid #eee}.mono{font-family:monospace;font-size:10px;color:#444}.r{text-align:right}.tot{text-align:right;margin-top:12px;font-size:13px;font-weight:600}@media print{button{display:none}}</style></head><body><h1>Orden de Pago — ${x(per)}</h1><div class="sub">Barrancas Fútbol Club · ${new Date().toLocaleDateString('es-AR')}${obs?' · '+x(obs):''}</div><table><thead><tr><th>Nombre</th><th>Rol</th><th>CBU</th><th>Alias</th><th>CUIT</th><th>Banco</th><th class="r">Monto</th></tr></thead><tbody>${rows.join('')}</tbody></table><div class="tot">Total: ${total}</div></body></html>`;
+  const w = window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400);
+};
+
+// ══════════════════════════════════════════
+// PROYECCIÓN
+// ══════════════════════════════════════════
+function initProy() {
+  S.proyData = S.personal.filter(p=>p.estado==='Activo').map(p=>({...p,nb:p.basico||0,nn:p.bono||0}));
+  renderProy();
+}
+window.initProy = initProy;
+
+window.calcProy = () => {
+  const pct    = parseFloat(document.getElementById('pct').value)||0;
+  const rolFil = document.getElementById('proy-rol').value;
+  const catFil = document.getElementById('proy-cat').value;
+  S.proyData.forEach(p => {
+    if ((!rolFil||p.rol===rolFil)&&(!catFil||p.categoria===catFil)) {
+      p.nb = Math.round((p.basico||0)*(1+pct/100));
+      p.nn = Math.round((p.bono||0)*(1+pct/100));
+    }
+  });
+  renderProy();
+};
+
+window.resetProy = () => {
+  S.proyData.forEach(p=>{p.nb=p.basico||0;p.nn=p.bono||0;});
+  document.getElementById('pct').value='0';
+  document.getElementById('proy-rol').value='';
+  document.getElementById('proy-cat').value='';
+  renderProy();
+};
+
+function renderProy() {
+  const rolFil = document.getElementById('proy-rol').value;
+  const catFil = document.getElementById('proy-cat').value;
+  const rows   = S.proyData.filter(p=>(!rolFil||p.rol===rolFil)&&(!catFil||p.categoria===catFil));
+
+  const tA  = rows.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
+  const tN  = rows.reduce((s,p)=>s+(p.nb||0)+(p.nn||0),0);
+  const dS  = tN-tA;
+  const dP  = tA?Math.round(dS/tA*100):0;
+  const tG  = S.proyData.reduce((s,p)=>s+(p.nb||0)+(p.nn||0),0);
+
+  document.getElementById('proy-tot').textContent = f(tG);
+  const diffEl = document.getElementById('proy-diff');
+  const label  = [rolFil,catFil].filter(Boolean).join(' · ');
+  if (label) {
+    diffEl.innerHTML = `<span style="color:var(--txt3)">${x(label)}:</span> ${f(tA)} → <span style="color:${dS>=0?'var(--amber)':'var(--green)'}">${f(tN)}</span> <span style="color:${dS>=0?'var(--amber)':'var(--green)'}">(${dP>=0?'+':''}${dP}%)</span>`;
+  } else {
+    const dg = tG - S.proyData.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
+    diffEl.textContent = (dg>=0?'+':'')+f(dg)+' vs actual';
+    diffEl.style.color = dg>0?'var(--amber)':dg<0?'var(--green)':'var(--txt3)';
+  }
+
+  document.getElementById('tb-proy').innerHTML = rows.map((p,i) => {
+    const gi  = S.proyData.indexOf(p);
+    const ta  = (p.basico||0)+(p.bono||0);
+    const tn  = (p.nb||0)+(p.nn||0);
+    const d   = ta?((tn-ta)/ta*100):(tn>0?100:0);
+    const dr  = Math.round(d*10)/10;
+    return `<tr>
+      <td class="nm">${x(p.nombre)}</td><td>${x(p.rol)}</td>
+      <td style="font-size:11px;color:var(--txt2)">${x(p.categoria||'—')}</td>
+      <td class="mo">${f(p.basico)}</td><td class="mo">${f(p.bono)}</td>
+      <td class="mo" style="color:var(--txt3)">${f(ta)}</td>
+      <td class="mo"><input type="number" value="${p.nb}" style="width:100px;padding:3px 7px;background:var(--bg2);border:1px solid var(--border);color:var(--txt);font-family:var(--mono);font-size:11px;outline:none" oninput="S_proy(${gi},'nb',this.value)"></td>
+      <td class="mo"><input type="number" value="${p.nn}" style="width:100px;padding:3px 7px;background:var(--bg2);border:1px solid var(--border);color:var(--txt);font-family:var(--mono);font-size:11px;outline:none" oninput="S_proy(${gi},'nn',this.value)"></td>
+      <td class="mo" style="color:var(--green)" id="proy-tn-${gi}">${f(tn)}</td>
+      <td class="mo ${dr>0?'proy-delta-pos':dr<0?'proy-delta-neg':''}" id="proy-d-${gi}">${dr>0?'+':''}${dr}%</td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="10" class="empty">Sin datos</td></tr>';
+}
+window.renderProy = renderProy;
+
+window.S_proy = (gi, field, val) => {
+  S.proyData[gi][field] = Number(val)||0;
+  const p  = S.proyData[gi];
+  const ta = (p.basico||0)+(p.bono||0);
+  const tn = (p.nb||0)+(p.nn||0);
+  const d  = ta?((tn-ta)/ta*100):(tn>0?100:0);
+  const dr = Math.round(d*10)/10;
+  const tnEl = document.getElementById('proy-tn-'+gi);
+  const dEl  = document.getElementById('proy-d-'+gi);
+  if (tnEl) tnEl.textContent = f(tn);
+  if (dEl)  { dEl.textContent=(dr>0?'+':'')+dr+'%'; dEl.className='mo '+(dr>0?'proy-delta-pos':dr<0?'proy-delta-neg':''); }
+  const rolFil = document.getElementById('proy-rol').value;
+  const catFil = document.getElementById('proy-cat').value;
+  const scope  = S.proyData.filter(p=>(!rolFil||p.rol===rolFil)&&(!catFil||p.categoria===catFil));
+  const tA2    = scope.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
+  const tN2    = scope.reduce((s,p)=>s+(p.nb||0)+(p.nn||0),0);
+  const dP2    = tA2?Math.round((tN2-tA2)/tA2*100):0;
+  const tG2    = S.proyData.reduce((s,p)=>s+(p.nb||0)+(p.nn||0),0);
+  document.getElementById('proy-tot').textContent = f(tG2);
+  const diffEl = document.getElementById('proy-diff');
+  const label  = [rolFil,catFil].filter(Boolean).join(' · ');
+  if (label) {
+    diffEl.innerHTML = `<span style="color:var(--txt3)">${x(label)}:</span> ${f(tA2)} → <span style="color:${tN2-tA2>=0?'var(--amber)':'var(--green)'}">${f(tN2)}</span> <span style="color:${tN2-tA2>=0?'var(--amber)':'var(--green)'}">(${dP2>=0?'+':''}${dP2}%)</span>`;
+  } else {
+    const dg = tG2 - S.proyData.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
+    diffEl.textContent = (dg>=0?'+':'')+f(dg)+' vs actual';
+    diffEl.style.color = dg>0?'var(--amber)':dg<0?'var(--green)':'var(--txt3)';
+  }
+};
+
+window.exportProyXLS = () => {
+  const rolFil = document.getElementById('proy-rol').value;
+  const catFil = document.getElementById('proy-cat').value;
+  const rows   = S.proyData.filter(p=>(!rolFil||p.rol===rolFil)&&(!catFil||p.categoria===catFil));
+  const data   = [['Nombre','Rol','Categoría','Básico actual','Bono actual','Total actual','Básico nuevo','Bono nuevo','Total nuevo','Δ%']];
+  rows.forEach(p => {
+    const ta=(p.basico||0)+(p.bono||0), tn=(p.nb||0)+(p.nn||0);
+    data.push([p.nombre,p.rol,p.categoria||'',p.basico||0,p.bono||0,ta,p.nb||0,p.nn||0,tn,(ta?Math.round((tn-ta)/ta*100):0)+'%']);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(data); const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Proyección'); XLSX.writeFile(wb,'BFC_Proyeccion.xlsx');
+};
+
+window.exportProyPDF = () => {
+  const rolFil = document.getElementById('proy-rol').value;
+  const catFil = document.getElementById('proy-cat').value;
+  const rows   = S.proyData.filter(p=>(!rolFil||p.rol===rolFil)&&(!catFil||p.categoria===catFil));
+  const titulo = [rolFil,catFil].filter(Boolean).join(' · ')||'General';
+  const tA     = rows.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
+  const tN     = rows.reduce((s,p)=>s+(p.nb||0)+(p.nn||0),0);
+  const dp     = tA?Math.round((tN-tA)/tA*100):0;
+  const trs    = rows.map(p => {
+    const ta=(p.basico||0)+(p.bono||0), tn=(p.nb||0)+(p.nn||0), d=ta?Math.round((tn-ta)/ta*100):0;
+    return `<tr><td>${x(p.nombre)}</td><td>${x(p.rol)}</td><td>${x(p.categoria||'—')}</td><td class="r">${f(ta)}</td><td class="r">${f(p.nb||0)}</td><td class="r">${f(p.nn||0)}</td><td class="r"><strong>${f(tn)}</strong></td><td class="r" style="color:${d>0?'#c8490a':'#166534'}">${d>0?'+':''}${d}%</td></tr>`;
+  }).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:sans-serif;padding:32px;color:#111;font-size:12px}h1{font-size:16px;margin-bottom:2px}.sub{color:#666;font-size:11px;margin-bottom:20px}table{width:100%;border-collapse:collapse}th{background:#f3f3f3;border-bottom:2px solid #ddd;padding:7px 10px;text-align:left;font-size:10px;letter-spacing:.5px;text-transform:uppercase}td{padding:7px 10px;border-bottom:1px solid #eee}.r{text-align:right}.summary{display:flex;gap:24px;margin-top:16px;padding:12px;background:#f9f9f9;border:1px solid #eee}.s-item{font-size:11px;color:#666}.s-item strong{display:block;font-size:14px;color:#111;margin-top:2px}@media print{button{display:none}}</style></head><body><h1>Proyección — ${titulo}</h1><div class="sub">Barrancas FC · ${new Date().toLocaleDateString('es-AR')}</div><table><thead><tr><th>Nombre</th><th>Rol</th><th>Categoría</th><th class="r">Total actual</th><th class="r">Básico nuevo</th><th class="r">Bono nuevo</th><th class="r">Total nuevo</th><th class="r">Δ%</th></tr></thead><tbody>${trs}</tbody></table><div class="summary"><div class="s-item">Personas<strong>${rows.length}</strong></div><div class="s-item">Masa actual<strong>${f(tA)}</strong></div><div class="s-item">Masa proyectada<strong>${f(tN)}</strong></div><div class="s-item">Variación<strong style="color:${dp>0?'#c8490a':'#166534'}">${dp>0?'+':''}${dp}%</strong></div></div></body></html>`;
+  const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400);
+};
+
+// ══════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════
+function renderDash() {
+  const act   = S.personal.filter(p=>p.estado==='Activo');
+  const jug   = act.filter(p=>p.rol==='Jugador');
+  const ct    = act.filter(p=>CT_ROLES.includes(p.rol));
+  const otros = act.filter(p=>!CT_ROLES.includes(p.rol)&&p.rol!=='Jugador');
+  const masa  = act.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
+  const bas   = act.reduce((s,p)=>s+(p.basico||0),0);
+  const bon   = act.reduce((s,p)=>s+(p.bono||0),0);
+  const prom  = jug.length?Math.round(jug.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0)/jug.length):0;
+  st('d-tot',act.length); st('d-jug',jug.length); st('d-ct',ct.length); st('d-otros',otros.length);
+  st('d-masa',f(masa)); st('d-bas',f(bas)); st('d-bon',f(bon)); st('d-prom',f(prom));
+  const byRol={}, byCat={};
+  act.forEach(p=>{ byRol[p.rol]=(byRol[p.rol]||0)+(p.basico||0)+(p.bono||0); if(p.categoria) byCat[p.categoria]=(byCat[p.categoria]||0)+(p.basico||0)+(p.bono||0); });
+  renderBar('ch-rol',byRol,masa); renderBar('ch-cat',byCat,masa);
+}
+function renderBar(id,data,max) {
+  const el=document.getElementById(id);
+  const sorted=Object.entries(data).sort((a,b)=>b[1]-a[1]);
+  el.innerHTML=sorted.length?sorted.map(([k,v])=>`<div class="bar-row"><div class="bar-lbl" title="${x(k)}">${x(k)}</div><div class="bar-track"><div class="bar-fill" style="width:${max?Math.round(v/max*100):0}%"></div></div><div class="bar-v">${f(v)}</div></div>`).join(''):'<div style="color:var(--txt3);font-size:11px">Sin datos</div>';
+}
+
+// ══════════════════════════════════════════
+// IMPORTAR
+// ══════════════════════════════════════════
+window.dlTemplate = () => {
+  const ws=XLSX.utils.aoa_to_sheet([TEMPLATE_COLS,['','Apellido Nombre','12345678','01/01/1995','1112345678','Av. Siempreviva 742','CABA','20-12345678-9','Galicia','0000003100010000000000','alias.bfc','Contacto','1187654321','Jugador','Primera División',150000,30000,'Activo','','A']]);
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Personal');
+  XLSX.writeFile(wb,'BFC_Template_Personal.xlsx');
+};
+
+window.handleImport = input => {
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:'binary'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    S.importData=XLSX.utils.sheet_to_json(ws,{defval:''});
+    if(!S.importData.length){toast('El archivo está vacío',true);return;}
+    document.getElementById('imp-n').textContent=S.importData.length;
+    const cols=Object.keys(S.importData[0]);
+    document.getElementById('imp-th').innerHTML=cols.map(c=>`<th>${c}</th>`).join('');
+    document.getElementById('imp-tb').innerHTML=S.importData.slice(0,8).map(r=>`<tr>${cols.map(c=>`<td>${x(String(r[c]||''))}</td>`).join('')}</tr>`).join('');
+    document.getElementById('imp-prev').style.display='block';
+  };
+  reader.readAsBinaryString(file);
+};
+
+window.cancelImport = () => {
+  S.importData=[];
+  document.getElementById('imp-prev').style.display='none';
+  document.getElementById('fi-import').value='';
+};
+
+async function confirmImport() {
+  if(!S.importData.length) return;
+  load(true);
+  let added=0, updated=0, errors=0;
+  for (const r of S.importData) {
+    if (!r.nombre||!r.rol){errors++;continue;}
+    try {
+      const id = String(r.id||'') || autoId();
+      const persona = {
+        id, nombre:String(r.nombre||''), dni:String(r.dni||''),
+        fechaNac:String(r.fechaNac||''), tel:String(r.tel||''),
+        direccion:String(r.direccion||''), procedencia:String(r.procedencia||''),
+        cuit:String(r.cuit||''), banco:String(r.banco||''),
+        cbu:String(r.cbu||''), alias:String(r.alias||''),
+        emergNombre:String(r.emergNombre||''), emergTel:String(r.emergTel||''),
+        rol:String(r.rol||''), categoria:String(r.categoria||''),
+        basico:Number(r.basico)||0, bono:Number(r.bono)||0,
+        estado:String(r.estado||'Activo'), notas:String(r.notas||''),
+        escalafon:String(r.escalafon||'')
+      };
+      const exists = S.personal.find(p=>p.id===id);
+      await fsSavePersona(persona);
+      if(exists) updated++; else added++;
+    } catch(e){errors++;}
+  }
+  await loadPersonal();
+  window.cancelImport();
+  toast(`Importado: ${added} nuevos, ${updated} actualizados${errors?', '+errors+' errores':''}`);
+  load(false);
+}
+window.confirmImport = confirmImport;
+
+// Drag & drop
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)window.handleImport({files:e.dataTransfer.files});});
+
+// ══════════════════════════════════════════
+// NAVEGACIÓN
+// ══════════════════════════════════════════
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById('tab-'+item.dataset.tab).classList.add('active');
+    if (item.dataset.tab==='proyeccion') initProy();
+    if (item.dataset.tab==='pagos') renderPagos();
+  });
+});
+
+// ══════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════
+function f(n)  { return '$'+Math.round(n||0).toLocaleString('es-AR'); }
+function x(s)  { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function st(id,v){ const e=document.getElementById(id); if(e) e.textContent=v; }
+function load(s){ document.getElementById('lov').classList.toggle('show',s); }
+function toast(msg,err){
+  const e=document.getElementById('toast');
+  e.textContent=msg; e.className='toast show '+(err?'er':'ok');
+  clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove('show'),3200);
+}
+function autoId(){ return 'BFC'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,5).toUpperCase(); }
+
+document.getElementById('cols-list').innerHTML = TEMPLATE_COLS.map(c=>`<code>${c}</code>`).join('');
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#C8102E;--red-dk:#9b0d22;
+  --bg:#0f0f0f;--bg1:#161616;--bg2:#1e1e1e;--bg3:#272727;
+  --border:#252525;--border2:#333;
+  --txt:#e4e4e4;--txt2:#999;--txt3:#555;
+  --green:#22c55e;--amber:#f59e0b;
+  --mono:'JetBrains Mono','Consolas',monospace;
+  --sans:'DM Sans',system-ui,sans-serif;
+}
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=DM+Serif+Display&display=swap');
+body{font-family:var(--sans);background:var(--bg);color:var(--txt);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);background-image:radial-gradient(ellipse 600px 400px at 15% 60%,rgba(200,16,46,.07) 0%,transparent 70%),radial-gradient(ellipse 400px 300px at 85% 20%,rgba(200,16,46,.04) 0%,transparent 70%)}
+.login-box{width:320px;background:var(--bg1);border:1px solid var(--border2)}
+.login-top{padding:32px 28px 24px;border-bottom:1px solid var(--border)}
+.login-shield{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.login-shield svg{flex-shrink:0}
+.login-brand h1{font-family:'DM Serif Display',serif;font-size:18px;font-weight:400;color:var(--txt);line-height:1.2}
+.login-brand span{font-size:10px;color:var(--txt3);letter-spacing:2px;text-transform:uppercase}
+.login-field{margin-bottom:12px}
+.login-field label{display:block;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--txt3);margin-bottom:5px}
+.login-field input{width:100%;padding:9px 11px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);font-family:var(--mono);font-size:13px;outline:none;transition:border .15s}
+.login-field input:focus{border-color:var(--red)}
+.login-bottom{padding:16px 28px 20px}
+.login-btn{width:100%;padding:10px;background:var(--red);border:none;color:#fff;font-family:var(--sans);font-weight:500;font-size:13px;cursor:pointer;transition:background .15s}
+.login-btn:hover{background:var(--red-dk)}
+.login-err{font-size:11px;color:var(--red);margin-top:8px;min-height:16px;text-align:center}
+#app{display:none;flex-direction:column;min-height:100vh}
+.topbar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:var(--bg1);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;flex-shrink:0}
+.topbar-l{display:flex;align-items:center;gap:14px}
+.topbar-logo{display:flex;align-items:center;gap:9px}
+.topbar-logo span{font-family:'DM Serif Display',serif;font-size:16px;color:var(--txt)}
+.topbar-r{display:flex;align-items:center;gap:12px}
+.topbar-user{font-size:11px;color:var(--txt3)}
+.topbar-out{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);cursor:pointer;padding:3px 8px;border:1px solid var(--border);transition:all .15s}
+.topbar-out:hover{color:var(--red);border-color:var(--red)}
+.nav{display:flex;padding:0 20px;background:var(--bg1);border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0}
+.nav-item{padding:10px 16px;cursor:pointer;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--txt3);border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s;user-select:none}
+.nav-item:hover{color:var(--txt2)}
+.nav-item.active{color:var(--red);border-bottom-color:var(--red)}
+.main{flex:1;padding:22px 24px;max-width:1400px;width:100%;margin:0 auto}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+.ph h2{font-size:18px;font-weight:600}.ph p{font-size:11px;color:var(--txt3);margin-top:3px}
+.ph-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{padding:8px 16px;font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;border:none;font-family:var(--sans);transition:all .15s;display:inline-flex;align-items:center;gap:5px}
+.btn-primary{background:var(--red);color:#fff}.btn-primary:hover{background:var(--red-dk)}
+.btn-secondary{background:var(--bg3);color:var(--txt2);border:1px solid var(--border2)}.btn-secondary:hover{color:var(--txt);border-color:var(--txt3)}
+.btn-ghost{background:transparent;color:var(--txt3);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--border2);color:var(--txt2)}
+.btn-danger{background:transparent;color:var(--red);border:1px solid rgba(200,16,46,.4)}.btn-danger:hover{background:var(--red);color:#fff}
+.btn-sm{padding:5px 10px;font-size:10px}
+.filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.fi{padding:8px 11px;background:var(--bg2);border:1px solid var(--border);color:var(--txt);font-family:var(--sans);font-size:12px;outline:none;transition:border .15s}
+.fi:focus{border-color:var(--red)}.fi-search{min-width:200px}
+.tw{overflow-x:auto;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead tr{background:var(--bg2);border-bottom:1px solid var(--border2)}
+thead th{padding:9px 13px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);white-space:nowrap}
+thead th.sortable{cursor:pointer;user-select:none;transition:color .15s}
+thead th.sortable:hover{color:var(--txt2)}
+thead th.sort-asc::after{content:' ↑';color:var(--red)}
+thead th.sort-desc::after{content:' ↓';color:var(--red)}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--bg2)}
+tbody td{padding:9px 13px;color:var(--txt2);white-space:nowrap}
+td.nm{color:var(--txt);font-weight:500}td.mo{font-family:var(--mono);font-size:11px}
+.empty{text-align:center;padding:40px;color:var(--txt3);font-size:12px;cursor:default!important}
+.empty:hover{background:transparent!important}
+tr.group-hd td{background:var(--bg2);color:var(--txt3);font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:6px 13px;cursor:default!important;border-bottom:1px solid var(--border2)}
+tr.group-hd:hover{background:var(--bg2)!important}
+.badge{display:inline-block;padding:2px 7px;font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase}
+.ba{background:rgba(200,16,46,.15);color:#e84060}.bb{background:rgba(245,158,11,.12);color:var(--amber)}
+.bc{background:rgba(34,197,94,.1);color:var(--green)}.bd{background:rgba(148,163,184,.1);color:#94a3b8}
+.bactivo{background:rgba(34,197,94,.1);color:var(--green)}.bbaja{background:rgba(200,16,46,.1);color:#e84060}
+.total-bar{display:flex;align-items:center;gap:20px;padding:10px 14px;background:var(--bg1);border:1px solid var(--border);border-top:none;flex-wrap:wrap}
+.total-bar-item{font-size:11px;color:var(--txt3)}.total-bar-item strong{font-family:var(--mono);color:var(--txt);margin-left:4px}
+.total-bar-item.accent strong{color:var(--green)}
+.mo-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:36px 16px}
+.mo-overlay.open{display:flex}
+.mo{background:var(--bg1);border:1px solid var(--border2);width:100%;max-width:660px;animation:moIn .18s ease}
+@keyframes moIn{from{transform:translateY(-10px);opacity:0}to{transform:translateY(0);opacity:1}}
+.mo-hd{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.mo-hd h3{font-size:14px;font-weight:600}.mo-x{cursor:pointer;color:var(--txt3);font-size:22px;line-height:1;padding:0 4px}.mo-x:hover{color:var(--txt)}
+.mo-bd{padding:20px}.mo-ft{padding:13px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:13px}.fg3{grid-template-columns:1fr 1fr 1fr}.ff{grid-column:1/-1}
+.fg label{display:block;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);margin-bottom:5px}
+.fg input,.fg select,.fg textarea{width:100%;padding:8px 10px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);font-family:var(--sans);font-size:12px;outline:none;transition:border .15s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--red)}.fg textarea{resize:vertical;min-height:64px}
+.fs{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--red);margin:16px 0 8px;border-bottom:1px solid var(--border);padding-bottom:5px}.fs:first-child{margin-top:0}
+.fg-row{display:flex;flex-direction:column;gap:5px}.fg-row label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3)}
+.fg-row input,.fg-row select,.fg-row textarea{padding:8px 10px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);font-family:var(--sans);font-size:12px;outline:none;transition:border .15s;width:100%}
+.fg-row input:focus,.fg-row select:focus{border-color:var(--red)}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:20px}
+.sc{background:var(--bg1);border:1px solid var(--border);padding:16px 18px}.sc.accent{border-left:3px solid var(--red)}
+.sc .lbl{font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--txt3);margin-bottom:7px}
+.sc .val{font-size:24px;font-weight:300;font-family:var(--mono);color:var(--txt)}.sc .sub{font-size:10px;color:var(--txt3);margin-top:3px}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
+.cb{background:var(--bg1);border:1px solid var(--border);padding:18px}
+.cb h4{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt3);margin-bottom:14px}
+.bar-chart{display:flex;flex-direction:column;gap:9px}.bar-row{display:flex;align-items:center;gap:10px}
+.bar-lbl{width:120px;font-size:11px;color:var(--txt2);text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;height:5px;background:var(--bg3)}.bar-fill{height:100%;background:var(--red);transition:width .5s ease}
+.bar-v{width:90px;font-size:10px;font-family:var(--mono);color:var(--txt3);text-align:right;flex-shrink:0}
+.pago-list{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.pago-item{background:var(--bg1);border:1px solid var(--border);padding:11px 15px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.pago-item:hover{border-color:var(--border2)}.pago-periodo{font-weight:600;font-size:13px}
+.pago-fecha{font-size:10px;color:var(--txt3);margin-top:2px}.pago-monto{font-family:var(--mono);color:var(--green);font-size:14px}
+.pago-grid-hd{display:grid;grid-template-columns:2fr 1fr 130px 50px;background:var(--bg2);border-bottom:1px solid var(--border2)}
+.pago-grid-hd span{padding:8px 11px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt3)}
+.pgr{display:grid;grid-template-columns:2fr 1fr 130px 50px;border-bottom:1px solid var(--border);align-items:center}
+.pgr:last-child{border-bottom:none}.pgr span{padding:8px 11px;font-size:12px;color:var(--txt2)}
+.pgr input[type=number]{padding:7px 11px;background:transparent;border:none;border-left:1px solid var(--border);color:var(--txt);font-family:var(--mono);font-size:12px;outline:none;width:100%}
+.pgr input[type=number]:focus{background:var(--bg2)}
+.pgr-chk{display:flex;align-items:center;justify-content:center;border-left:1px solid var(--border);height:100%}
+.pgr-chk input{width:14px;height:14px;cursor:pointer;accent-color:var(--red)}
+.pago-total-row{display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);border-top:1px solid var(--border)}
+.pago-total-row span{font-size:11px;color:var(--txt3)}.pago-total-row strong{font-family:var(--mono);font-size:16px;color:var(--green)}
+.proy-bar{display:flex;gap:10px;align-items:center;background:var(--bg1);border:1px solid var(--border);padding:13px 16px;margin-bottom:18px;flex-wrap:wrap}
+.proy-bar label{font-size:11px;color:var(--txt3)}
+.proy-bar input{width:72px;padding:6px 9px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);font-family:var(--mono);font-size:13px;outline:none;text-align:center}
+.proy-bar input:focus{border-color:var(--red)}
+.proy-sum{margin-left:auto;display:flex;align-items:center;gap:6px}.proy-sum span{font-size:11px;color:var(--txt3)}
+.proy-sum strong{font-family:var(--mono);font-size:16px;color:var(--green)}
+.proy-delta-pos{color:var(--amber)}.proy-delta-neg{color:var(--green)}
+.drop-zone{border:2px dashed var(--border2);padding:28px;text-align:center;cursor:pointer;transition:border-color .2s;background:var(--bg1)}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--red)}.drop-zone p{color:var(--txt3);font-size:12px;margin-top:7px}.drop-zone strong{color:var(--txt);font-size:14px}
+.cols-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.cols-list code{background:var(--bg2);border:1px solid var(--border);padding:2px 7px;font-size:10px;color:var(--txt2);font-family:var(--mono)}
+.ficha-g{display:grid;grid-template-columns:1fr 1fr;gap:0}.ficha-sec{padding:14px 0}
+.ficha-sec h4{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--red);margin-bottom:10px}
+.fr{display:flex;gap:8px;margin-bottom:7px;font-size:12px}.fk{color:var(--txt3);min-width:100px;flex-shrink:0;font-size:11px}.fv{color:var(--txt);font-family:var(--mono);font-size:11px;word-break:break-all}
+.toast{position:fixed;bottom:22px;right:22px;z-index:9999;background:var(--bg2);border:1px solid var(--border2);padding:11px 16px;font-size:12px;color:var(--txt);display:none;max-width:300px}
+.toast.show{display:block;animation:tin .2s ease}.toast.ok{border-left:3px solid var(--green)}.toast.er{border-left:3px solid var(--red)}
+@keyframes tin{from{transform:translateY(6px);opacity:0}to{transform:translateY(0);opacity:1}}
+.lov{display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.5);align-items:center;justify-content:center}
+.lov.show{display:flex}.sp{width:30px;height:30px;border:2px solid var(--border2);border-top-color:var(--red);border-radius:50%;animation:spin .65s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:640px){.fg{grid-template-columns:1fr}.charts{grid-template-columns:1fr}.ficha-g{grid-template-columns:1fr}.pago-grid-hd,.pgr{grid-template-columns:2fr 120px 44px}.pago-grid-hd span:nth-child(2),.pgr span:nth-child(2){display:none}}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<div class="lov" id="lov"><div class="sp"></div></div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-top">
+      <div class="login-shield">
+        <svg width="44" height="44" viewBox="0 0 44 44" fill="none"><path d="M22 2L3 10V26C3 35.5 11.5 42.5 22 44C32.5 42.5 41 35.5 41 26V10L22 2Z" fill="#C8102E" fill-opacity=".12" stroke="#C8102E" stroke-width="1.2"/><text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" fill="#C8102E" font-family="monospace" font-size="12" font-weight="700">BFC</text></svg>
+        <div class="login-brand"><h1>BFC Gestión</h1><span>Sistema Administrativo</span></div>
+      </div>
+      <div class="login-field"><label>Email</label><input type="email" id="lu" autocomplete="username" placeholder="email@ejemplo.com"></div>
+      <div class="login-field"><label>Contraseña</label><input type="password" id="lp" autocomplete="current-password" placeholder="••••••••"></div>
+    </div>
+    <div class="login-bottom">
+      <button class="login-btn" onclick="doLogin()">Ingresar</button>
+      <div class="login-err" id="lerr"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-l">
+      <div class="topbar-logo">
+        <svg width="26" height="26" viewBox="0 0 44 44" fill="none"><path d="M22 2L3 10V26C3 35.5 11.5 42.5 22 44C32.5 42.5 41 35.5 41 26V10L22 2Z" fill="#C8102E" fill-opacity=".15" stroke="#C8102E" stroke-width="1.2"/><text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" fill="#C8102E" font-family="monospace" font-size="12" font-weight="700">BFC</text></svg>
+        <span>Gestión</span>
+      </div>
+    </div>
+    <div class="topbar-r">
+      <span class="topbar-user" id="tu"></span>
+      <span class="topbar-out" onclick="logout()">Salir</span>
+    </div>
+  </div>
+  <div class="nav">
+    <div class="nav-item active" data-tab="dashboard">Dashboard</div>
+    <div class="nav-item" data-tab="personal">Personal</div>
+    <div class="nav-item" data-tab="pagos">Pagos</div>
+    <div class="nav-item" data-tab="proyeccion">Proyección</div>
+    <div class="nav-item" data-tab="bajas">Bajas</div>
+    <div class="nav-item" data-tab="importar">Importar</div>
+  </div>
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div class="tab-panel active" id="tab-dashboard">
+      <div class="ph"><div><h2>Dashboard</h2><p>Resumen general del plantel y costos</p></div><div class="ph-actions"><button class="btn btn-ghost btn-sm" onclick="loadAll()">↺ Actualizar</button></div></div>
+      <div class="stats">
+        <div class="sc accent"><div class="lbl">Personal Activo</div><div class="val" id="d-tot">—</div></div>
+        <div class="sc"><div class="lbl">Jugadores</div><div class="val" id="d-jug">—</div></div>
+        <div class="sc"><div class="lbl">Cuerpo Técnico</div><div class="val" id="d-ct">—</div></div>
+        <div class="sc"><div class="lbl">Otros Roles</div><div class="val" id="d-otros">—</div></div>
+        <div class="sc accent"><div class="lbl">Masa Salarial</div><div class="val" id="d-masa">—</div><div class="sub">básico + bono / mes</div></div>
+        <div class="sc"><div class="lbl">Solo Básicos</div><div class="val" id="d-bas">—</div></div>
+        <div class="sc"><div class="lbl">Solo Bonos</div><div class="val" id="d-bon">—</div></div>
+        <div class="sc"><div class="lbl">Promedio Jugador</div><div class="val" id="d-prom">—</div></div>
+      </div>
+      <div class="charts">
+        <div class="cb"><h4>Costo por Rol</h4><div class="bar-chart" id="ch-rol"></div></div>
+        <div class="cb"><h4>Costo por Categoría</h4><div class="bar-chart" id="ch-cat"></div></div>
+      </div>
+    </div>
+
+    <!-- PERSONAL -->
+    <div class="tab-panel" id="tab-personal">
+      <div class="ph"><div><h2>Personal</h2><p>Jugadores, cuerpo técnico y staff</p></div><div class="ph-actions"><button class="btn btn-ghost btn-sm" onclick="loadPersonal()">↺</button><button class="btn btn-primary" onclick="openMoPersona()">+ Nuevo</button></div></div>
+      <div class="filters">
+        <input class="fi fi-search" id="fs" placeholder="Buscar nombre…" oninput="renderPersonal()">
+        <select class="fi" id="fr" onchange="renderPersonal()">
+          <option value="">Todos los roles</option><option value="__CT__">— Cuerpo Técnico —</option>
+          <option>Jugador</option><option>DT</option><option>Ayudante de Campo</option><option>PF</option><option>Médico</option><option>Utilero</option><option>Mantenimiento</option><option>Entrenador de Arqueros</option><option>Otro</option>
+        </select>
+        <select class="fi" id="fcat" onchange="renderPersonal()">
+          <option value="">Todas las categorías</option>
+          <option>Primera División</option><option>Reserva</option><option>4ta División</option><option>5ta División</option><option>6ta División</option><option>7ma División</option><option>8va División</option><option>9na División</option><option>Infantiles 2013</option><option>Infantiles 2014</option><option>Infantiles 2015</option><option>Infantiles 2016</option>
+        </select>
+        <select class="fi" id="fesc" onchange="renderPersonal()"><option value="">Todos los escalafones</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
+        <select class="fi" id="fe" onchange="renderPersonal()"><option value="Activo">Activos</option><option value="">Todos</option></select>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th class="sortable" onclick="setSortP('nombre')">Nombre</th>
+            <th class="sortable" onclick="setSortP('rol')">Rol</th>
+            <th class="sortable" onclick="setSortP('categoria')">Categoría</th>
+            <th class="sortable" onclick="setSortP('escalafon')">Escal.</th>
+            <th class="sortable" onclick="setSortP('basico')">Básico</th>
+            <th class="sortable" onclick="setSortP('bono')">Bono</th>
+            <th class="sortable" onclick="setSortP('total')">Total</th>
+            <th>Estado</th><th>Acciones</th>
+          </tr></thead>
+          <tbody id="tb-p"></tbody>
+        </table>
+      </div>
+      <div class="total-bar">
+        <div class="total-bar-item">Personas: <strong id="ptb-count">—</strong></div>
+        <div class="total-bar-item">Básicos: <strong id="ptb-bas">—</strong></div>
+        <div class="total-bar-item">Bonos: <strong id="ptb-bon">—</strong></div>
+        <div class="total-bar-item accent">Total masa: <strong id="ptb-tot">—</strong></div>
+      </div>
+    </div>
+
+    <!-- PAGOS -->
+    <div class="tab-panel" id="tab-pagos">
+      <div class="ph"><div><h2>Pagos</h2><p>Órdenes de pago y registro histórico</p></div><div class="ph-actions"><button class="btn btn-primary" onclick="showNuevoPago(null)">+ Nuevo Pago</button></div></div>
+      <div id="pag-hist">
+        <p style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);margin-bottom:10px">Historial</p>
+        <div class="pago-list" id="lp-list"></div>
+      </div>
+      <div id="pag-form" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <h3 style="font-size:14px;font-weight:600" id="pag-form-title">Nueva Orden de Pago</h3>
+          <button class="btn btn-ghost btn-sm" onclick="hidePagoForm()">← Historial</button>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <div class="fg-row" style="flex:1;min-width:180px"><label>Período *</label><input id="pp" type="text" placeholder="Ej: Marzo 2026"></div>
+          <div class="fg-row" style="flex:1;min-width:150px"><label>Filtrar por categoría</label>
+            <select id="pp-cat" onchange="filtrarPagoGrid()" class="fi" style="padding:8px 10px">
+              <option value="">Todas</option><option>Primera División</option><option>Reserva</option><option>4ta División</option><option>5ta División</option><option>6ta División</option><option>7ma División</option>
+            </select>
+          </div>
+          <div class="fg-row" style="flex:2;min-width:180px"><label>Observaciones</label><input id="po" type="text" placeholder="Opcional"></div>
+        </div>
+        <div style="border:1px solid var(--border)">
+          <div class="pago-grid-hd"><span>Persona</span><span>Rol</span><span>Monto ($)</span><span style="text-align:center">✓</span></div>
+          <div id="pgrid"></div>
+        </div>
+        <div class="pago-total-row"><span>Total a abonar:</span><strong id="ptot">$0</strong></div>
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;flex-wrap:wrap">
+          <button class="btn btn-secondary" onclick="exportXLS()">⬇ XLS</button>
+          <button class="btn btn-secondary" onclick="exportPDF()">⬇ PDF</button>
+          <button class="btn btn-danger btn-sm" id="pag-del-btn" onclick="eliminarPagoActual()" style="display:none;margin-right:auto">Eliminar</button>
+          <button class="btn btn-primary" id="pag-save-btn" onclick="guardarPago()">Registrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROYECCIÓN -->
+    <div class="tab-panel" id="tab-proyeccion">
+      <div class="ph"><div><h2>Proyección</h2><p>Simulá aumentos sobre el plantel activo</p></div></div>
+      <div class="proy-bar">
+        <label>Aumento:</label>
+        <input type="number" id="pct" value="30" min="-100" max="1000" oninput="calcProy()">
+        <span style="color:var(--txt3);font-size:12px">%</span>
+        <button class="btn btn-secondary btn-sm" onclick="calcProy()">Aplicar</button>
+        <button class="btn btn-ghost btn-sm" onclick="resetProy()">Restaurar</button>
+        <div style="display:flex;align-items:center;gap:6px;margin-left:8px">
+          <label>Categoría:</label>
+          <select class="fi" id="proy-cat" onchange="renderProy()" style="padding:5px 9px;font-size:11px">
+            <option value="">Todas</option><option>Primera División</option><option>Reserva</option><option>4ta División</option><option>5ta División</option><option>6ta División</option><option>7ma División</option><option>8va División</option><option>9na División</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <label>Rol:</label>
+          <select class="fi" id="proy-rol" onchange="renderProy()" style="padding:5px 9px;font-size:11px">
+            <option value="">Todos</option><option>Jugador</option><option>DT</option><option>Ayudante de Campo</option><option>PF</option><option>Médico</option><option>Utilero</option><option>Mantenimiento</option><option>Entrenador de Arqueros</option><option>Otro</option>
+          </select>
+        </div>
+        <div class="proy-sum"><span>Total proyectado:</span><strong id="proy-tot">$0</strong><span id="proy-diff" style="font-size:11px;color:var(--txt3);margin-left:4px"></span></div>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Nombre</th><th>Rol</th><th>Categoría</th><th>Básico actual</th><th>Bono actual</th><th>Total actual</th><th>Básico nuevo</th><th>Bono nuevo</th><th>Total nuevo</th><th>Δ%</th></tr></thead>
+          <tbody id="tb-proy"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:10px;display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="exportProyXLS()">⬇ XLS</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportProyPDF()">⬇ PDF</button>
+      </div>
+    </div>
+
+    <!-- BAJAS -->
+    <div class="tab-panel" id="tab-bajas">
+      <div class="ph"><div><h2>Bajas</h2><p>Personal desvinculado del club</p></div></div>
+      <div class="tw"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Categoría</th><th>Fecha Baja</th><th>Motivo</th><th>Acciones</th></tr></thead><tbody id="tb-b"></tbody></table></div>
+    </div>
+
+    <!-- IMPORTAR -->
+    <div class="tab-panel" id="tab-importar">
+      <div class="ph"><div><h2>Importar Personal</h2><p>Carga masiva desde archivo Excel (.xlsx)</p></div><div class="ph-actions"><button class="btn btn-ghost" onclick="dlTemplate()">⬇ Plantilla Excel</button></div></div>
+      <div style="max-width:560px">
+        <div class="drop-zone" id="dz" onclick="document.getElementById('fi-import').click()">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#C8102E" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+          <strong>Arrastrá o hacé click para subir</strong>
+          <p>Archivos .xlsx — usá la plantilla descargable</p>
+          <input type="file" id="fi-import" accept=".xlsx" style="display:none" onchange="handleImport(this)">
+        </div>
+        <div id="imp-prev" style="margin-top:14px;display:none">
+          <p style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);margin-bottom:8px">Vista previa — <span id="imp-n">0</span> registros</p>
+          <div class="tw" style="max-height:260px;overflow-y:auto"><table><thead><tr id="imp-th"></tr></thead><tbody id="imp-tb"></tbody></table></div>
+          <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">
+            <button class="btn btn-ghost" onclick="cancelImport()">Cancelar</button>
+            <button class="btn btn-primary" onclick="confirmImport()">Confirmar Importación</button>
+          </div>
+        </div>
+        <div style="margin-top:18px;background:var(--bg1);border:1px solid var(--border);padding:14px">
+          <p style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt3);margin-bottom:8px">Columnas del template</p>
+          <div class="cols-list" id="cols-list"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL PERSONA -->
+<div class="mo-overlay" id="mo-persona">
+  <div class="mo">
+    <div class="mo-hd"><h3 id="mo-p-title">Nueva Persona</h3><span class="mo-x" onclick="closeMoPersona()">×</span></div>
+    <div class="mo-bd">
+      <input type="hidden" id="p-id">
+      <div class="fs">Identificación</div>
+      <div class="fg">
+        <div class="fg-row ff"><label>Nombre completo *</label><input id="p-nombre" type="text"></div>
+        <div class="fg-row"><label>DNI</label><input id="p-dni" type="text"></div>
+        <div class="fg-row"><label>Fecha de nacimiento</label><input id="p-fnac" type="text" placeholder="dd/mm/aaaa"></div>
+        <div class="fg-row"><label>Procedencia</label><input id="p-proc" type="text"></div>
+      </div>
+      <div class="fs">Contacto</div>
+      <div class="fg">
+        <div class="fg-row"><label>Teléfono</label><input id="p-tel" type="text"></div>
+        <div class="fg-row"><label>Dirección</label><input id="p-dir" type="text"></div>
+        <div class="fg-row"><label>Contacto emergencia</label><input id="p-en" type="text"></div>
+        <div class="fg-row"><label>Tel. emergencia</label><input id="p-et" type="text"></div>
+      </div>
+      <div class="fs">Rol y Remuneración</div>
+      <div class="fg fg3">
+        <div class="fg-row"><label>Rol *</label>
+          <select id="p-rol"><option value="">Seleccionar…</option><option>Jugador</option><option>DT</option><option>Ayudante de Campo</option><option>PF</option><option>Médico</option><option>Utilero</option><option>Mantenimiento</option><option>Entrenador de Arqueros</option><option>Otro</option></select>
+        </div>
+        <div class="fg-row"><label>Categoría (División)</label>
+          <select id="p-cat"><option value="">Sin categoría</option><option>Primera División</option><option>Reserva</option><option>4ta División</option><option>5ta División</option><option>6ta División</option><option>7ma División</option><option>8va División</option><option>9na División</option><option>Infantiles 2013</option><option>Infantiles 2014</option><option>Infantiles 2015</option><option>Infantiles 2016</option></select>
+        </div>
+        <div class="fg-row"><label>Escalafón</label>
+          <select id="p-esc"><option value="">Sin escalafón</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
+        </div>
+        <div class="fg-row"><label>Estado</label><select id="p-est"><option>Activo</option><option>Baja</option></select></div>
+        <div class="fg-row"><label>Básico ($)</label><input id="p-bas" type="number" min="0" placeholder="0"></div>
+        <div class="fg-row"><label>Bono ($)</label><input id="p-bon" type="number" min="0" placeholder="0"></div>
+      </div>
+      <div class="fs">Datos Bancarios</div>
+      <div class="fg">
+        <div class="fg-row"><label>CUIT</label><input id="p-cuit" type="text"></div>
+        <div class="fg-row"><label>Banco</label><input id="p-banco" type="text"></div>
+        <div class="fg-row"><label>CBU</label><input id="p-cbu" type="text"></div>
+        <div class="fg-row"><label>Alias</label><input id="p-alias" type="text"></div>
+      </div>
+      <div class="fs">Notas</div>
+      <div class="fg"><div class="fg-row ff"><label>Observaciones internas</label><textarea id="p-notas"></textarea></div></div>
+    </div>
+    <div class="mo-ft"><button class="btn btn-ghost" onclick="closeMoPersona()">Cancelar</button><button class="btn btn-primary" onclick="savePersona()">Guardar</button></div>
+  </div>
+</div>
+
+<!-- MODAL FICHA -->
+<div class="mo-overlay" id="mo-ficha">
+  <div class="mo" style="max-width:700px">
+    <div class="mo-hd"><h3 id="ficha-title"></h3><span class="mo-x" onclick="closeFicha()">×</span></div>
+    <div class="mo-bd" id="ficha-body"></div>
+    <div class="mo-ft">
+      <button class="btn btn-danger btn-sm" id="ficha-baja-btn" onclick="startBaja()">Dar de Baja</button>
+      <button class="btn btn-secondary btn-sm" onclick="editFromFicha()">Editar</button>
+      <button class="btn btn-ghost" onclick="closeFicha()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BAJA -->
+<div class="mo-overlay" id="mo-baja">
+  <div class="mo" style="max-width:400px">
+    <div class="mo-hd"><h3>Confirmar Baja</h3><span class="mo-x" onclick="document.getElementById('mo-baja').classList.remove('open')">×</span></div>
+    <div class="mo-bd">
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:12px">El registro pasará a la pestaña Bajas.</p>
+      <div class="fg-row"><label>Motivo</label><textarea id="baja-mot" style="min-height:70px;width:100%;padding:8px 10px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);font-family:var(--sans);font-size:12px;outline:none;resize:vertical"></textarea></div>
+    </div>
+    <div class="mo-ft">
+      <button class="btn btn-ghost" onclick="document.getElementById('mo-baja').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarBaja()">Confirmar Baja</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
