@@ -267,39 +267,53 @@ const _modalSelections = { 'p-roles': [], 'p-cats': [] };
 const ROLES_OPTS = ['Jugador','DT','Ayudante de Campo','PF','Médico','Utilero','Mantenimiento','Entrenador de Arqueros','Otro'];
 const CATS_OPTS  = ['Primera División','Reserva','4ta División','5ta División','6ta División','7ma División','8va División','9na División','Infantiles 2013','Infantiles 2014','Infantiles 2015','Infantiles 2016'];
 
+const MS_MODAL_OPTS_MAP = { 'p-roles': ROLES_OPTS, 'p-cats': CATS_OPTS };
+
 function initMsModal(id, opts, selected) {
   _modalSelections[id] = Array.isArray(selected) ? [...selected] : (selected ? [selected] : []);
-  renderMsModal(id, opts);
+  renderMsModal(id);
 }
 
-function renderMsModal(id, opts) {
-  const sel   = _modalSelections[id];
-  const optsEl = document.getElementById('opts-'+id);
+function renderMsModal(id) {
+  const sel     = _modalSelections[id];
+  const opts    = MS_MODAL_OPTS_MAP[id];
   const chipsEl = document.getElementById('chips-'+id);
+  const optsEl  = document.getElementById('opts-'+id);
 
-  chipsEl.innerHTML = sel.map(v =>
-    `<span class="ms-modal-chip">${x(v)}<button type="button" onclick="removeMsModalItem('${id}','${v.replace(/'/g,"\\'")}',${JSON.stringify(opts)})">×</button></span>`
-  ).join('');
+  // Chips de seleccionados
+  chipsEl.innerHTML = '';
+  sel.forEach(v => {
+    const chip = document.createElement('span');
+    chip.className = 'ms-modal-chip';
+    chip.innerHTML = x(v);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '×';
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      _modalSelections[id] = _modalSelections[id].filter(i=>i!==v);
+      renderMsModal(id);
+    });
+    chip.appendChild(btn);
+    chipsEl.appendChild(chip);
+  });
 
-  const remaining = opts.filter(o => !sel.includes(o));
-  optsEl.innerHTML = remaining.map(o =>
-    `<span class="ms-modal-opt" onclick="addMsModalItem('${id}','${o.replace(/'/g,"\\'")}',${JSON.stringify(opts)})">${x(o)}</span>`
-  ).join('');
+  // Opciones disponibles (las que no están seleccionadas)
+  optsEl.innerHTML = '';
+  opts.filter(o => !sel.includes(o)).forEach(o => {
+    const opt = document.createElement('span');
+    opt.className = 'ms-modal-opt';
+    opt.textContent = o;
+    opt.addEventListener('click', e => {
+      e.stopPropagation();
+      if (!_modalSelections[id].includes(o)) _modalSelections[id].push(o);
+      renderMsModal(id);
+    });
+    optsEl.appendChild(opt);
+  });
 }
 
-function addMsModalItem(id, val, opts) {
-  if (!_modalSelections[id].includes(val)) _modalSelections[id].push(val);
-  renderMsModal(id, opts);
-}
-window.addMsModalItem = addMsModalItem;
-
-function removeMsModalItem(id, val, opts) {
-  _modalSelections[id] = _modalSelections[id].filter(v=>v!==val);
-  renderMsModal(id, opts);
-}
-window.removeMsModalItem = removeMsModalItem;
-
-window.focusMsModal = () => {}; // placeholder
+window.focusMsModal = () => {};
 
 // ══════════════════════════════════════════
 // PERSONAL — RENDER
