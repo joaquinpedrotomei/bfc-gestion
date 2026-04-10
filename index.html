@@ -435,23 +435,40 @@ function renderPersonaRow(p, isSub) {
   const eb    = p.escalafon ? `<span class="badge b${p.escalafon.toLowerCase()}">${p.escalafon}</span>` : '—';
   const fac   = p.factura === 'Si'
     ? `<span style="font-size:9px;font-weight:700;letter-spacing:.5px;padding:2px 6px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:var(--amber)">FAC</span>`
-    : `<span style="font-size:9px;color:var(--txt3)">—</span>`;
-  const nameCell = isSub
-    ? `<td style="color:var(--txt3);font-size:11px;padding-left:22px">↳ función</td>`
-    : `<td class="nm">${x(p.nombre)}</td>`;
-  return `<tr onclick="openFicha('${p.id}')" ${isSub?'style="background:rgba(255,255,255,.015)"':''}>
-    ${nameCell}
-    <td style="font-size:11px">${roles.map(r=>x(r)).join(', ')||'—'}</td>
-    <td style="font-size:11px;color:var(--txt2)">${cats.map(c=>x(c)).join(', ')||'—'}</td>
+    : `<span style="font-size:11px;color:var(--txt3)">—</span>`;
+
+  if (isSub) {
+    // Subfunción: misma estructura que fila normal pero nombre reemplazado por rol+indentación
+    return `<tr onclick="openFicha('${p.id}')" style="background:rgba(255,255,255,.02)">
+      <td style="padding-left:28px;border-left:3px solid var(--border2);color:var(--txt2);font-size:12px">└ ${roles.map(r=>x(r)).join(', ')||'—'}</td>
+      <td></td>
+      <td style="font-size:12px;color:var(--txt2)">${cats.map(c=>x(c)).join(', ')||'—'}</td>
+      <td>${eb}</td>
+      <td>${fac}</td>
+      <td class="mo">${f(p.basico)}</td>
+      <td class="mo">${f(p.bono)}</td>
+      <td class="mo" style="color:var(--txt);font-weight:600">${f((p.basico||0)+(p.bono||0))}</td>
+      <td><span class="badge b${p.estado==='Activo'?'activo':'baja'}">${p.estado}</span></td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openMoPersona('${p.id}')">Editar</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--green);border-color:rgba(34,197,94,.3)" onclick="event.stopPropagation();nuevaFuncion('${p.id}')">+ Rol</button>
+      </td>
+    </tr>`;
+  }
+
+  return `<tr onclick="openFicha('${p.id}')">
+    <td class="nm">${x(p.nombre)}</td>
+    <td style="font-size:12px;color:var(--txt2)">${roles.map(r=>x(r)).join(', ')||'—'}</td>
+    <td style="font-size:12px;color:var(--txt2)">${cats.map(c=>x(c)).join(', ')||'—'}</td>
     <td>${eb}</td>
     <td>${fac}</td>
     <td class="mo">${f(p.basico)}</td>
     <td class="mo">${f(p.bono)}</td>
-    <td class="mo" style="color:var(--txt)">${f((p.basico||0)+(p.bono||0))}</td>
+    <td class="mo" style="color:var(--txt);font-weight:600">${f((p.basico||0)+(p.bono||0))}</td>
     <td><span class="badge b${p.estado==='Activo'?'activo':'baja'}">${p.estado}</span></td>
     <td style="display:flex;gap:4px">
       <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openMoPersona('${p.id}')">Editar</button>
-      <button class="btn btn-ghost btn-sm" style="color:var(--green);border-color:rgba(34,197,94,.3)" onclick="event.stopPropagation();nuevaFuncion('${p.id}')" title="Agregar nueva función a esta persona">+ Rol</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--green);border-color:rgba(34,197,94,.3)" onclick="event.stopPropagation();nuevaFuncion('${p.id}')">+ Rol</button>
     </td>
   </tr>`;
 }
@@ -743,6 +760,9 @@ async function showNuevoPago(pagoId) {
       const monto   = enDet ? detMap[p.id] : ((p.basico||0)+(p.bono||0));
       const checked = pagoId ? enDet : true;
       const isSub   = personas.length > 1;
+      // Medio de pago: default según factura del registro
+      const detActual = pagoId && enDet ? (S.pagos.find(pg=>pg.id===pagoId)?.detalles||[]).find(d=>d.personaId===p.id) : null;
+      const medioDefault = detActual?.medio || (p.factura==='Si' ? 'Transferencia' : 'Efectivo');
 
       const row = document.createElement('div');
       row.className = 'pgr';
@@ -762,11 +782,15 @@ async function showNuevoPago(pagoId) {
         ${nameHtml}
         ${isSub ? '' : rolHtml}
         <input type="number" class="pm" value="${monto}" min="0" oninput="calcPagTotal()">
+        <select class="pmed" style="padding:5px 8px;background:var(--bg2);border:none;border-left:1px solid var(--border);color:var(--txt2);font-family:var(--sans);font-size:11px;outline:none;width:100%;cursor:pointer">
+          <option value="Efectivo" ${medioDefault==='Efectivo'?'selected':''}>💵 Efectivo</option>
+          <option value="Transferencia" ${medioDefault==='Transferencia'?'selected':''}>🏦 Transferencia</option>
+        </select>
         <div class="pgr-chk"><input type="checkbox" class="pc" ${checked?'checked':''} onchange="calcPagTotal()"></div>`;
 
-      // Ajustar grid si es subfunción (nombre + rol fusionados)
+      // Ajustar grid si es subfunción
       if (isSub) {
-        row.style.gridTemplateColumns = '3fr 130px 50px';
+        row.style.gridTemplateColumns = '3fr 120px 110px 50px';
       }
 
       pgrid.appendChild(row);
@@ -820,7 +844,12 @@ async function guardarPago() {
   const detalles = [];
   document.querySelectorAll('.pgr').forEach(r => {
     if (r.style.display!=='none' && r.querySelector('.pc').checked)
-      detalles.push({ personaId:r.dataset.id, nombre:r.dataset.nombre, monto:parseFloat(r.querySelector('.pm').value)||0 });
+      detalles.push({
+        personaId: r.dataset.id,
+        nombre:    r.dataset.nombre,
+        monto:     parseFloat(r.querySelector('.pm').value)||0,
+        medio:     r.querySelector('.pmed')?.value || 'Efectivo'
+      });
   });
   if (!detalles.length) { toast('Seleccioná al menos una persona',true); return; }
   load(true);
@@ -857,11 +886,12 @@ window.eliminarPagoActual = eliminarPagoActual;
 
 window.exportXLS = () => {
   const per  = document.getElementById('pp').value||'Pago';
-  const rows = [['Nombre','Rol','Monto','CBU','Alias','CUIT','Banco']];
+  const rows = [['Nombre','Rol','Medio de Pago','Monto','CBU','Alias','CUIT','Banco']];
   document.querySelectorAll('.pgr').forEach(r => {
     if (r.style.display==='none'||!r.querySelector('.pc').checked) return;
     const p = S.personal.find(z=>z.id===r.dataset.id)||{};
-    rows.push([r.dataset.nombre, r.dataset.rol, parseFloat(r.querySelector('.pm').value)||0,
+    const medio = r.querySelector('.pmed')?.value||'Efectivo';
+    rows.push([r.dataset.nombre, r.dataset.rol, medio, parseFloat(r.querySelector('.pm').value)||0,
       p.cbu||'', p.alias||'', p.cuit||'', p.banco||'']);
   });
   const ws=XLSX.utils.aoa_to_sheet(rows); const wb=XLSX.utils.book_new();
@@ -875,11 +905,13 @@ window.exportPDF = () => {
   const rows  = [];
   document.querySelectorAll('.pgr').forEach(r => {
     if (r.style.display==='none'||!r.querySelector('.pc').checked) return;
-    const p = S.personal.find(z=>z.id===r.dataset.id)||{};
-    rows.push(`<tr><td>${x(r.dataset.nombre)}</td><td>${x(r.dataset.rol)}</td><td class="mono">${x(p.cbu||'—')}</td><td class="mono">${x(p.alias||'—')}</td><td class="mono">${x(p.cuit||'—')}</td><td>${x(p.banco||'—')}</td><td class="r"><strong>${f(parseFloat(r.querySelector('.pm').value)||0)}</strong></td></tr>`);
+    const p     = S.personal.find(z=>z.id===r.dataset.id)||{};
+    const medio = r.querySelector('.pmed')?.value||'Efectivo';
+    const monto = parseFloat(r.querySelector('.pm').value)||0;
+    rows.push(`<tr><td>${x(r.dataset.nombre)}</td><td>${x(r.dataset.rol)}</td><td>${x(medio)}</td><td class="mono">${x(p.cbu||'—')}</td><td class="mono">${x(p.alias||'—')}</td><td class="mono">${x(p.cuit||'—')}</td><td>${x(p.banco||'—')}</td><td class="r"><strong>${f(monto)}</strong></td></tr>`);
   });
   const total = document.getElementById('ptot').textContent;
-  const html  = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:sans-serif;padding:28px;color:#111;font-size:11px}h1{font-size:16px;margin-bottom:2px}.sub{color:#666;font-size:10px;margin:3px 0 18px}table{width:100%;border-collapse:collapse}th{background:#f3f3f3;border-bottom:2px solid #ddd;padding:6px 8px;text-align:left;font-size:9px;letter-spacing:.5px;text-transform:uppercase}td{padding:6px 8px;border-bottom:1px solid #eee}.mono{font-family:monospace;font-size:10px;color:#444}.r{text-align:right}.tot{text-align:right;margin-top:12px;font-size:13px;font-weight:600}@media print{button{display:none}}</style></head><body><h1>Orden de Pago — ${x(per)}</h1><div class="sub">Barrancas Fútbol Club · ${new Date().toLocaleDateString('es-AR')}${obs?' · '+x(obs):''}</div><table><thead><tr><th>Nombre</th><th>Rol</th><th>CBU</th><th>Alias</th><th>CUIT</th><th>Banco</th><th class="r">Monto</th></tr></thead><tbody>${rows.join('')}</tbody></table><div class="tot">Total: ${total}</div></body></html>`;
+  const html  = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:sans-serif;padding:28px;color:#111;font-size:11px}h1{font-size:16px;margin-bottom:2px}.sub{color:#666;font-size:10px;margin:3px 0 18px}table{width:100%;border-collapse:collapse}th{background:#f3f3f3;border-bottom:2px solid #ddd;padding:6px 8px;text-align:left;font-size:9px;letter-spacing:.5px;text-transform:uppercase}td{padding:6px 8px;border-bottom:1px solid #eee}.mono{font-family:monospace;font-size:10px;color:#444}.r{text-align:right}.tot{text-align:right;margin-top:12px;font-size:13px;font-weight:600}@media print{button{display:none}}</style></head><body><h1>Orden de Pago — ${x(per)}</h1><div class="sub">Barrancas Fútbol Club · ${new Date().toLocaleDateString('es-AR')}${obs?' · '+x(obs):''}</div><table><thead><tr><th>Nombre</th><th>Rol</th><th>Medio</th><th>CBU</th><th>Alias</th><th>CUIT</th><th>Banco</th><th class="r">Monto</th></tr></thead><tbody>${rows.join('')}</tbody></table><div class="tot">Total: ${total}</div></body></html>`;
   const w = window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400);
 };
 
@@ -1235,15 +1267,15 @@ document.getElementById('cols-list').innerHTML = TEMPLATE_COLS.map(c=>`<code>${c
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --red:#C8102E;--red-dk:#9b0d22;
-  --bg:#0f0f0f;--bg1:#161616;--bg2:#1e1e1e;--bg3:#272727;
-  --border:#252525;--border2:#333;
-  --txt:#e4e4e4;--txt2:#999;--txt3:#555;
+  --bg:#0f0f0f;--bg1:#161616;--bg2:#1e1e1e;--bg3:#2a2a2a;
+  --border:#2a2a2a;--border2:#3d3d3d;
+  --txt:#f0f0f0;--txt2:#c0c0c0;--txt3:#707070;
   --green:#22c55e;--amber:#f59e0b;
   --mono:'JetBrains Mono','Consolas',monospace;
-  --sans:'DM Sans',system-ui,sans-serif;
+  --sans:'Inter','DM Sans',system-ui,sans-serif;
 }
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=DM+Serif+Display&display=swap');
-body{font-family:var(--sans);background:var(--bg);color:var(--txt);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=DM+Serif+Display&display=swap');
+body{font-family:var(--sans);background:var(--bg);color:var(--txt);min-height:100vh;font-size:13px;-webkit-font-smoothing:antialiased;font-weight:400}
 #login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);background-image:radial-gradient(ellipse 600px 400px at 15% 60%,rgba(200,16,46,.07) 0%,transparent 70%),radial-gradient(ellipse 400px 300px at 85% 20%,rgba(200,16,46,.04) 0%,transparent 70%)}
 .login-box{width:320px;background:var(--bg1);border:1px solid var(--border2)}
 .login-top{padding:32px 28px 24px;border-bottom:1px solid var(--border)}
@@ -1319,11 +1351,11 @@ thead th.sort-desc::after{content:' ↓';color:var(--red)}
 tbody tr{border-bottom:1px solid var(--border);transition:background .1s;cursor:pointer}
 tbody tr:last-child{border-bottom:none}
 tbody tr:hover{background:var(--bg2)}
-tbody td{padding:9px 13px;color:var(--txt2);white-space:nowrap}
-td.nm{color:var(--txt);font-weight:500}td.mo{font-family:var(--mono);font-size:11px}
+tbody td{padding:9px 13px;color:var(--txt2);white-space:nowrap;font-size:13px}
+td.nm{color:var(--txt);font-weight:600}td.mo{font-family:var(--mono);font-size:12px;color:var(--txt2)}
 .empty{text-align:center;padding:40px;color:var(--txt3);font-size:12px;cursor:default!important}
 .empty:hover{background:transparent!important}
-tr.group-hd td{background:var(--bg2);color:var(--txt3);font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:6px 13px;cursor:default!important;border-bottom:1px solid var(--border2)}
+tr.group-hd td{background:var(--bg2);color:var(--txt2);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:7px 13px;cursor:default!important;border-bottom:1px solid var(--border2)}
 tr.group-hd:hover{background:var(--bg2)!important}
 .badge{display:inline-block;padding:2px 7px;font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase}
 .ba{background:rgba(200,16,46,.15);color:#e84060}.bb{background:rgba(245,158,11,.12);color:var(--amber)}
@@ -1372,9 +1404,9 @@ tr.group-hd:hover{background:var(--bg2)!important}
 .pago-item{background:var(--bg1);border:1px solid var(--border);padding:11px 15px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
 .pago-item:hover{border-color:var(--border2)}.pago-periodo{font-weight:600;font-size:13px}
 .pago-fecha{font-size:10px;color:var(--txt3);margin-top:2px}.pago-monto{font-family:var(--mono);color:var(--green);font-size:14px}
-.pago-grid-hd{display:grid;grid-template-columns:2fr 1fr 130px 50px;background:var(--bg2);border-bottom:1px solid var(--border2)}
+.pago-grid-hd{display:grid;grid-template-columns:2fr 1fr 120px 110px 50px;background:var(--bg2);border-bottom:1px solid var(--border2)}
 .pago-grid-hd span{padding:8px 11px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt3)}
-.pgr{display:grid;grid-template-columns:2fr 1fr 130px 50px;border-bottom:1px solid var(--border);align-items:center}
+.pgr{display:grid;grid-template-columns:2fr 1fr 120px 110px 50px;border-bottom:1px solid var(--border);align-items:center}
 .pgr:last-child{border-bottom:none}.pgr span{padding:8px 11px;font-size:12px;color:var(--txt2)}
 .pgr input[type=number]{padding:7px 11px;background:transparent;border:none;border-left:1px solid var(--border);color:var(--txt);font-family:var(--mono);font-size:12px;outline:none;width:100%}
 .pgr input[type=number]:focus{background:var(--bg2)}
@@ -1568,7 +1600,7 @@ tr.group-hd:hover{background:var(--bg2)!important}
           <div class="fg-row" style="flex:2;min-width:180px"><label>Observaciones</label><input id="po" type="text" placeholder="Opcional"></div>
         </div>
         <div style="border:1px solid var(--border)">
-          <div class="pago-grid-hd"><span>Persona</span><span>Rol</span><span>Monto ($)</span><span style="text-align:center">✓</span></div>
+          <div class="pago-grid-hd"><span>Persona</span><span>Rol</span><span>Monto ($)</span><span>Medio de pago</span><span style="text-align:center">✓</span></div>
           <div id="pgrid"></div>
         </div>
         <div class="pago-total-row"><span>Total a abonar:</span><strong id="ptot">$0</strong></div>
