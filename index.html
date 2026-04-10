@@ -151,7 +151,7 @@ async function loadAll() {
   load(true);
   try { S.personal = await fsGetPersonal(); } catch(e) { S.personal = []; toast('Error personal: '+e.message, true); }
   try { S.pagos    = await fsGetPagos();    } catch(e) { S.pagos    = []; toast('Error pagos: '+e.message, true); }
-  renderPersonal(); renderBajas(); renderPagos(); renderDash(); initProy();
+  renderPersonal(); renderBajas(); renderPagos(); renderDash(); initProy(); renderBalance();
   load(false);
 }
 window.loadAll = loadAll;
@@ -374,7 +374,7 @@ function renderPersonal() {
   document.getElementById('ptb-tot').textContent   = f(totBas+totBon);
 
   const tb = document.getElementById('tb-p');
-  if (!rows.length) { tb.innerHTML='<tr class="empty"><td colspan="9">Sin resultados</td></tr>'; return; }
+  if (!rows.length) { tb.innerHTML='<tr class="empty"><td colspan="10">Sin resultados</td></tr>'; return; }
 
   // Agrupar siempre por nombre — personas con múltiples funciones aparecen juntas
   // Detectar si hay alguien con más de un registro
@@ -396,7 +396,7 @@ function renderPersonal() {
       const gt    = gRows.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
       if (gRows.length > 1) {
         // Header de persona con múltiples funciones
-        html += `<tr class="group-hd" style="border-left:3px solid var(--red)"><td colspan="9">${x(nombre)} <span style="font-weight:400;color:var(--txt3)">${gRows.length} funciones · ${f(gt)} total</span></td></tr>`;
+        html += `<tr class="group-hd" style="border-left:3px solid var(--red)"><td colspan="10">${x(nombre)} <span style="font-weight:400;color:var(--txt3)">${gRows.length} funciones · ${f(gt)} total</span></td></tr>`;
         html += gRows.map(p => renderPersonaRow(p, true)).join('');
       } else {
         html += renderPersonaRow(gRows[0], false);
@@ -418,7 +418,7 @@ function renderPersonal() {
       order.forEach(rol => {
         const gRows = groups[rol];
         const gt    = gRows.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
-        html += `<tr class="group-hd"><td colspan="9">${x(rol)} — ${gRows.length} persona${gRows.length>1?'s':''} · ${f(gt)}</td></tr>`;
+        html += `<tr class="group-hd"><td colspan="10">${x(rol)} — ${gRows.length} persona${gRows.length>1?'s':''} · ${f(gt)}</td></tr>`;
         html += gRows.map(p=>renderPersonaRow(p, false)).join('');
       });
       tb.innerHTML = html;
@@ -433,6 +433,9 @@ function renderPersonaRow(p, isSub) {
   const roles = Array.isArray(p.roles) ? p.roles : (p.rol ? [p.rol] : []);
   const cats  = Array.isArray(p.categorias) ? p.categorias : (p.categoria ? [p.categoria] : []);
   const eb    = p.escalafon ? `<span class="badge b${p.escalafon.toLowerCase()}">${p.escalafon}</span>` : '—';
+  const fac   = p.factura === 'Si'
+    ? `<span style="font-size:9px;font-weight:700;letter-spacing:.5px;padding:2px 6px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:var(--amber)">FAC</span>`
+    : `<span style="font-size:9px;color:var(--txt3)">—</span>`;
   const nameCell = isSub
     ? `<td style="color:var(--txt3);font-size:11px;padding-left:22px">↳ función</td>`
     : `<td class="nm">${x(p.nombre)}</td>`;
@@ -441,6 +444,7 @@ function renderPersonaRow(p, isSub) {
     <td style="font-size:11px">${roles.map(r=>x(r)).join(', ')||'—'}</td>
     <td style="font-size:11px;color:var(--txt2)">${cats.map(c=>x(c)).join(', ')||'—'}</td>
     <td>${eb}</td>
+    <td>${fac}</td>
     <td class="mo">${f(p.basico)}</td>
     <td class="mo">${f(p.bono)}</td>
     <td class="mo" style="color:var(--txt)">${f((p.basico||0)+(p.bono||0))}</td>
@@ -476,7 +480,7 @@ function openMoPersona(id) {
     'p-tel':'tel','p-dir':'direccion','p-proc':'procedencia',
     'p-cuit':'cuit','p-banco':'banco','p-cbu':'cbu','p-alias':'alias',
     'p-en':'emergNombre','p-et':'emergTel',
-    'p-esc':'escalafon','p-est':'estado','p-bas':'basico','p-bon':'bono','p-notas':'notas'
+    'p-esc':'escalafon','p-est':'estado','p-bas':'basico','p-bon':'bono','p-notas':'notas','p-factura':'factura'
   };
   Object.entries(map).forEach(([elId,key]) => {
     const el = document.getElementById(elId);
@@ -517,6 +521,7 @@ async function savePersona() {
     emergNombre: document.getElementById('p-en').value,
     emergTel:    document.getElementById('p-et').value,
     escalafon:   document.getElementById('p-esc').value,
+    factura:     document.getElementById('p-factura').value || 'No',
     basico:      Number(document.getElementById('p-bas').value)||0,
     bono:        Number(document.getElementById('p-bon').value)||0,
     estado:      document.getElementById('p-est').value,
@@ -557,6 +562,7 @@ function nuevaFuncion(id) {
     'p-en':     p.emergNombre||'',
     'p-et':     p.emergTel||'',
     'p-esc':    '',       // escalafón vacío
+    'p-factura':'No',
     'p-est':    'Activo',
     'p-bas':    '',
     'p-bon':    '',
@@ -604,6 +610,7 @@ function openFicha(id) {
         <div class="fr"><span class="fk">Roles</span><span class="fv">${roles.join(', ')||'—'}</span></div>
         <div class="fr"><span class="fk">Categorías</span><span class="fv">${cats.join(', ')||'—'}</span></div>
         <div class="fr"><span class="fk">Escalafón</span><span class="fv">${eb}</span></div>
+        <div class="fr"><span class="fk">Factura</span><span class="fv">${p.factura==='Si'?'<span style="color:var(--amber)">Con factura</span>':'Sin factura'}</span></div>
         <div class="fr"><span class="fk">Básico</span><span class="fv">${f(p.basico)}</span></div>
         <div class="fr"><span class="fk">Bono</span><span class="fv">${f(p.bono)}</span></div>
         <div class="fr"><span class="fk">Total mensual</span><span class="fv" style="color:var(--green)">${f((p.basico||0)+(p.bono||0))}</span></div>
@@ -1102,8 +1109,100 @@ dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
 dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)window.handleImport({files:e.dataTransfer.files});});
 
 // ══════════════════════════════════════════
-// NAVEGACIÓN
+// BALANCE
 // ══════════════════════════════════════════
+function renderBalance() {
+  const activos = S.personal.filter(p => p.estado === 'Activo');
+  const conFac  = activos.filter(p => p.factura === 'Si');
+  const sinFac  = activos.filter(p => p.factura !== 'Si');
+
+  const masaTotal  = activos.reduce((s,p)=>s+(p.basico||0)+(p.bono||0), 0);
+  const masaFac    = conFac.reduce((s,p)=>s+(p.basico||0)+(p.bono||0), 0);
+  const masaNoFac  = sinFac.reduce((s,p)=>s+(p.basico||0)+(p.bono||0), 0);
+  const pctFac     = masaTotal ? Math.round(masaFac/masaTotal*100) : 0;
+  const pctNoFac   = masaTotal ? Math.round(masaNoFac/masaTotal*100) : 0;
+
+  // Personas mixtas — tienen funciones con y sin factura
+  const porNombre = {};
+  activos.forEach(p => {
+    if (!porNombre[p.nombre]) porNombre[p.nombre] = [];
+    porNombre[p.nombre].push(p);
+  });
+  const mixtas = Object.entries(porNombre).filter(([,fns]) => {
+    const tipos = new Set(fns.map(f => f.factura==='Si'?'fac':'no'));
+    return tipos.size > 1;
+  });
+
+  // Stats
+  st('bal-total',    f(masaTotal));
+  st('bal-fac',      f(masaFac));
+  st('bal-nofac',    f(masaNoFac));
+  st('bal-fac-pct',  pctFac + '% de la masa total');
+  st('bal-nofac-pct',pctNoFac + '% de la masa total');
+  st('bal-fac-n',    conFac.length + ' funciones');
+  st('bal-nofac-n',  sinFac.length + ' funciones');
+  st('bal-mixtas-n', mixtas.length);
+
+  // Barra proporcional
+  const barFac   = document.getElementById('bal-bar-fac');
+  const barNoFac = document.getElementById('bal-bar-nofac');
+  barFac.style.width = pctFac + '%';
+  barFac.style.minWidth = masaFac > 0 ? '60px' : '0';
+  document.getElementById('bal-bar-fac-lbl').textContent   = pctFac > 8 ? pctFac + '%' : '';
+  document.getElementById('bal-bar-nofac-lbl').textContent = pctNoFac > 8 ? pctNoFac + '%' : '';
+
+  // Charts por rol
+  const rolFac = {}, rolNoFac = {};
+  conFac.forEach(p => {
+    const r = (Array.isArray(p.roles)&&p.roles.length)?p.roles[0]:(p.rol||'Sin rol');
+    rolFac[r] = (rolFac[r]||0)+(p.basico||0)+(p.bono||0);
+  });
+  sinFac.forEach(p => {
+    const r = (Array.isArray(p.roles)&&p.roles.length)?p.roles[0]:(p.rol||'Sin rol');
+    rolNoFac[r] = (rolNoFac[r]||0)+(p.basico||0)+(p.bono||0);
+  });
+  renderBar('bal-rol-fac',   rolFac,   masaFac);
+  renderBar('bal-rol-nofac', rolNoFac, masaNoFac);
+
+  // Charts por categoría
+  const catFac = {}, catNoFac = {};
+  conFac.forEach(p => {
+    const cats = Array.isArray(p.categorias)&&p.categorias.length ? p.categorias : (p.categoria ? [p.categoria] : ['Sin categoría']);
+    cats.forEach(c => { catFac[c] = (catFac[c]||0)+(p.basico||0)+(p.bono||0); });
+  });
+  sinFac.forEach(p => {
+    const cats = Array.isArray(p.categorias)&&p.categorias.length ? p.categorias : (p.categoria ? [p.categoria] : ['Sin categoría']);
+    cats.forEach(c => { catNoFac[c] = (catNoFac[c]||0)+(p.basico||0)+(p.bono||0); });
+  });
+  renderBar('bal-cat-fac',   catFac,   masaFac);
+  renderBar('bal-cat-nofac', catNoFac, masaNoFac);
+
+  // Tabla personas mixtas
+  const section = document.getElementById('bal-mixtas-section');
+  const tb      = document.getElementById('bal-mixtas-tb');
+  if (!mixtas.length) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+  tb.innerHTML = mixtas.flatMap(([nombre, fns]) =>
+    fns.map((p, i) => {
+      const roles = Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[]);
+      const cats  = Array.isArray(p.categorias)?p.categorias:(p.categoria?[p.categoria]:[]);
+      const isFac = p.factura === 'Si';
+      return `<tr ${i===0?'':'style="background:rgba(255,255,255,.015)"'}>
+        <td class="nm" ${i>0?'style="color:var(--txt3);font-size:11px;padding-left:18px"':''}>${i===0?x(nombre):'↳'}</td>
+        <td style="font-size:11px">${roles.join(', ')||'—'}</td>
+        <td style="font-size:11px;color:var(--txt2)">${cats.join(', ')||'—'}</td>
+        <td>${isFac?'<span style="font-size:9px;font-weight:700;padding:2px 6px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:var(--amber)">FAC</span>':'<span style="font-size:11px;color:var(--txt3)">No</span>'}</td>
+        <td class="mo">${f(p.basico)}</td>
+        <td class="mo">${f(p.bono)}</td>
+        <td class="mo" style="color:var(--txt)">${f((p.basico||0)+(p.bono||0))}</td>
+      </tr>`;
+    })
+  ).join('');
+}
+window.renderBalance = renderBalance;
 document.querySelectorAll('.nav-item').forEach(item => {
   item.addEventListener('click', () => {
     document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -1112,6 +1211,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
     document.getElementById('tab-'+item.dataset.tab).classList.add('active');
     if (item.dataset.tab==='proyeccion') initProy();
     if (item.dataset.tab==='pagos') renderPagos();
+    if (item.dataset.tab==='balance') renderBalance();
   });
 });
 
@@ -1345,6 +1445,7 @@ tr.group-hd:hover{background:var(--bg2)!important}
     <div class="nav-item" data-tab="personal">Personal</div>
     <div class="nav-item" data-tab="pagos">Pagos</div>
     <div class="nav-item" data-tab="proyeccion">Proyección</div>
+    <div class="nav-item" data-tab="balance">Balance</div>
     <div class="nav-item" data-tab="bajas">Bajas</div>
     <div class="nav-item" data-tab="importar">Importar</div>
   </div>
@@ -1428,6 +1529,7 @@ tr.group-hd:hover{background:var(--bg2)!important}
             <th class="sortable" onclick="setSortP('rol')">Rol</th>
             <th class="sortable" onclick="setSortP('categoria')">Categoría</th>
             <th class="sortable" onclick="setSortP('escalafon')">Escal.</th>
+            <th>Fac.</th>
             <th class="sortable" onclick="setSortP('basico')">Básico</th>
             <th class="sortable" onclick="setSortP('bono')">Bono</th>
             <th class="sortable" onclick="setSortP('total')">Total</th>
@@ -1545,6 +1647,55 @@ tr.group-hd:hover{background:var(--bg2)!important}
       </div>
     </div>
 
+    <!-- BALANCE -->
+    <div class="tab-panel" id="tab-balance">
+      <div class="ph">
+        <div><h2>Balance</h2><p>Análisis de masa salarial por tipo de facturación</p></div>
+        <div class="ph-actions"><button class="btn btn-ghost btn-sm" onclick="renderBalance()">↺ Actualizar</button></div>
+      </div>
+      <div class="stats" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
+        <div class="sc accent"><div class="lbl">Masa Total</div><div class="val" id="bal-total">—</div><div class="sub">todas las funciones activas</div></div>
+        <div class="sc" style="border-left:3px solid var(--amber)"><div class="lbl">Con Factura</div><div class="val" id="bal-fac">—</div><div class="sub" id="bal-fac-pct">—</div></div>
+        <div class="sc" style="border-left:3px solid var(--txt3)"><div class="lbl">Sin Factura</div><div class="val" id="bal-nofac">—</div><div class="sub" id="bal-nofac-pct">—</div></div>
+        <div class="sc"><div class="lbl">Funciones Con Factura</div><div class="val" id="bal-fac-n">—</div></div>
+        <div class="sc"><div class="lbl">Funciones Sin Factura</div><div class="val" id="bal-nofac-n">—</div></div>
+        <div class="sc"><div class="lbl">Personas Mixtas</div><div class="val" id="bal-mixtas-n">—</div><div class="sub">cobran de ambas formas</div></div>
+      </div>
+      <!-- Barra proporcional -->
+      <div style="margin-bottom:20px;background:var(--bg1);border:1px solid var(--border);padding:18px">
+        <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt3);margin-bottom:10px">Distribución de masa salarial</div>
+        <div style="display:flex;height:28px;overflow:hidden;gap:2px;margin-bottom:8px">
+          <div id="bal-bar-fac" style="background:var(--amber);height:100%;transition:width .5s ease;display:flex;align-items:center;justify-content:center;min-width:0">
+            <span id="bal-bar-fac-lbl" style="font-size:10px;font-weight:700;color:#000;white-space:nowrap;padding:0 8px"></span>
+          </div>
+          <div id="bal-bar-nofac" style="background:var(--bg3);border:1px solid var(--border2);height:100%;flex:1;display:flex;align-items:center;justify-content:center;min-width:0">
+            <span id="bal-bar-nofac-lbl" style="font-size:10px;color:var(--txt3);white-space:nowrap;padding:0 8px"></span>
+          </div>
+        </div>
+        <div style="display:flex;gap:16px">
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3)"><div style="width:10px;height:10px;background:var(--amber);flex-shrink:0"></div>Con factura</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3)"><div style="width:10px;height:10px;background:var(--bg3);border:1px solid var(--border2);flex-shrink:0"></div>Sin factura</div>
+        </div>
+      </div>
+      <!-- Charts por rol y categoría -->
+      <div class="charts">
+        <div class="cb"><h4>Por Rol — Con Factura</h4><div class="bar-chart" id="bal-rol-fac"></div></div>
+        <div class="cb"><h4>Por Rol — Sin Factura</h4><div class="bar-chart" id="bal-rol-nofac"></div></div>
+        <div class="cb"><h4>Por Categoría — Con Factura</h4><div class="bar-chart" id="bal-cat-fac"></div></div>
+        <div class="cb"><h4>Por Categoría — Sin Factura</h4><div class="bar-chart" id="bal-cat-nofac"></div></div>
+      </div>
+      <!-- Tabla personas mixtas -->
+      <div id="bal-mixtas-section" style="margin-top:20px;display:none">
+        <p style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--amber);margin-bottom:10px">⚠ Personas con facturación mixta</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Nombre</th><th>Roles</th><th>Categorías</th><th>Factura</th><th>Básico</th><th>Bono</th><th>Total función</th></tr></thead>
+            <tbody id="bal-mixtas-tb"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1586,6 +1737,12 @@ tr.group-hd:hover{background:var(--bg2)!important}
           <select id="p-esc"><option value="">Sin escalafón</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
         </div>
         <div class="fg-row"><label>Estado</label><select id="p-est"><option>Activo</option><option>Baja</option></select></div>
+        <div class="fg-row"><label>Factura</label>
+          <select id="p-factura">
+            <option value="No">Sin factura</option>
+            <option value="Si">Con factura</option>
+          </select>
+        </div>
         <div class="fg-row"><label>Básico ($)</label><input id="p-bas" type="number" min="0" placeholder="0"></div>
         <div class="fg-row"><label>Bono ($)</label><input id="p-bon" type="number" min="0" placeholder="0"></div>
       </div>
