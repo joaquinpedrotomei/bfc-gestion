@@ -445,7 +445,10 @@ function renderPersonaRow(p, isSub) {
     <td class="mo">${f(p.bono)}</td>
     <td class="mo" style="color:var(--txt)">${f((p.basico||0)+(p.bono||0))}</td>
     <td><span class="badge b${p.estado==='Activo'?'activo':'baja'}">${p.estado}</span></td>
-    <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openMoPersona('${p.id}')">Editar</button></td>
+    <td style="display:flex;gap:4px">
+      <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openMoPersona('${p.id}')">Editar</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--green);border-color:rgba(34,197,94,.3)" onclick="event.stopPropagation();nuevaFuncion('${p.id}')" title="Agregar nueva función a esta persona">+ Rol</button>
+    </td>
   </tr>`;
 }
 
@@ -529,6 +532,48 @@ async function savePersona() {
   load(false);
 }
 window.savePersona = savePersona;
+
+// Crea un nuevo registro con los datos personales copiados, roles/cats vacíos
+function nuevaFuncion(id) {
+  const p = S.personal.find(z=>z.id===id);
+  if (!p) return;
+
+  // Título especial
+  document.getElementById('mo-p-title').textContent = `Nueva función — ${p.nombre}`;
+
+  // Campos de identidad copiados
+  const mapCopy = {
+    'p-id':'',            // ID vacío → se genera nuevo al guardar
+    'p-nombre': p.nombre,
+    'p-dni':    p.dni     || '',
+    'p-fnac':   p.fechaNac|| '',
+    'p-tel':    p.tel     || '',
+    'p-dir':    p.direccion||'',
+    'p-proc':   p.procedencia||'',
+    'p-cuit':   p.cuit    || '',
+    'p-banco':  p.banco   || '',
+    'p-cbu':    p.cbu     || '',
+    'p-alias':  p.alias   || '',
+    'p-en':     p.emergNombre||'',
+    'p-et':     p.emergTel||'',
+    'p-esc':    '',       // escalafón vacío
+    'p-est':    'Activo',
+    'p-bas':    '',
+    'p-bon':    '',
+    'p-notas':  ''
+  };
+  Object.entries(mapCopy).forEach(([elId, val]) => {
+    const el = document.getElementById(elId);
+    if (el) el.value = val;
+  });
+
+  // Roles y categorías vacíos
+  initMsModal('p-roles', ROLES_OPTS, []);
+  initMsModal('p-cats',  CATS_OPTS,  []);
+
+  document.getElementById('mo-persona').classList.add('open');
+}
+window.nuevaFuncion = nuevaFuncion;
 
 // ══════════════════════════════════════════
 // FICHA
