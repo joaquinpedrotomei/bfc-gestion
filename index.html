@@ -362,9 +362,13 @@ function renderPersonal() {
     return va<vb?-_sortP.dir:va>vb?_sortP.dir:0;
   });
 
-  const totBas = rows.reduce((s,p)=>s+(p.basico||0),0);
-  const totBon = rows.reduce((s,p)=>s+(p.bono||0),0);
-  document.getElementById('ptb-count').textContent = rows.length;
+  const totBas     = rows.reduce((s,p)=>s+(p.basico||0),0);
+  const totBon     = rows.reduce((s,p)=>s+(p.bono||0),0);
+  const nombresUnicos = new Set(rows.map(p=>p.nombre)).size;
+  const hayMulti   = nombresUnicos < rows.length;
+  document.getElementById('ptb-count').textContent = hayMulti
+    ? `${nombresUnicos} (${rows.length} funciones)`
+    : rows.length;
   document.getElementById('ptb-bas').textContent   = f(totBas);
   document.getElementById('ptb-bon').textContent   = f(totBon);
   document.getElementById('ptb-tot').textContent   = f(totBas+totBon);
@@ -372,33 +376,68 @@ function renderPersonal() {
   const tb = document.getElementById('tb-p');
   if (!rows.length) { tb.innerHTML='<tr class="empty"><td colspan="9">Sin resultados</td></tr>'; return; }
 
-  const noFiltros = rolSet.size===0 && catSet.size===0 && !escFil && !q;
-  if (noFiltros) {
-    // Agrupar por primer rol
+  // Agrupar siempre por nombre — personas con múltiples funciones aparecen juntas
+  // Detectar si hay alguien con más de un registro
+  const nombreCount = {};
+  rows.forEach(p => { nombreCount[p.nombre] = (nombreCount[p.nombre]||0)+1; });
+  const hayDuplicados = Object.values(nombreCount).some(v=>v>1);
+
+  if (hayDuplicados) {
+    // Agrupar por nombre, subgrupo cuando hay más de una función
     const groups = {};
+    const order  = [];
     rows.forEach(p => {
-      const r = (Array.isArray(p.roles)&&p.roles.length) ? p.roles[0] : (p.rol||'Sin rol');
-      if(!groups[r]) groups[r]=[]; groups[r].push(p);
+      if (!groups[p.nombre]) { groups[p.nombre]=[]; order.push(p.nombre); }
+      groups[p.nombre].push(p);
     });
     let html='';
-    Object.entries(groups).forEach(([rol,gRows]) => {
-      const gt = gRows.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
-      html += `<tr class="group-hd"><td colspan="9">${x(rol)} — ${gRows.length} persona${gRows.length>1?'s':''} · ${f(gt)}</td></tr>`;
-      html += gRows.map(renderPersonaRow).join('');
+    order.forEach(nombre => {
+      const gRows = groups[nombre];
+      const gt    = gRows.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
+      if (gRows.length > 1) {
+        // Header de persona con múltiples funciones
+        html += `<tr class="group-hd" style="border-left:3px solid var(--red)"><td colspan="9">${x(nombre)} <span style="font-weight:400;color:var(--txt3)">${gRows.length} funciones · ${f(gt)} total</span></td></tr>`;
+        html += gRows.map(p => renderPersonaRow(p, true)).join('');
+      } else {
+        html += renderPersonaRow(gRows[0], false);
+      }
     });
     tb.innerHTML = html;
   } else {
-    tb.innerHTML = rows.map(renderPersonaRow).join('');
+    // Sin duplicados: agrupar por rol como antes
+    const noFiltros = rolSet.size===0 && catSet.size===0 && !escFil && !q;
+    if (noFiltros) {
+      const groups = {};
+      const order  = [];
+      rows.forEach(p => {
+        const r = (Array.isArray(p.roles)&&p.roles.length) ? p.roles[0] : (p.rol||'Sin rol');
+        if (!groups[r]) { groups[r]=[]; order.push(r); }
+        groups[r].push(p);
+      });
+      let html='';
+      order.forEach(rol => {
+        const gRows = groups[rol];
+        const gt    = gRows.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
+        html += `<tr class="group-hd"><td colspan="9">${x(rol)} — ${gRows.length} persona${gRows.length>1?'s':''} · ${f(gt)}</td></tr>`;
+        html += gRows.map(p=>renderPersonaRow(p, false)).join('');
+      });
+      tb.innerHTML = html;
+    } else {
+      tb.innerHTML = rows.map(p=>renderPersonaRow(p, false)).join('');
+    }
   }
 }
 window.renderPersonal = renderPersonal;
 
-function renderPersonaRow(p) {
+function renderPersonaRow(p, isSub) {
   const roles = Array.isArray(p.roles) ? p.roles : (p.rol ? [p.rol] : []);
   const cats  = Array.isArray(p.categorias) ? p.categorias : (p.categoria ? [p.categoria] : []);
   const eb    = p.escalafon ? `<span class="badge b${p.escalafon.toLowerCase()}">${p.escalafon}</span>` : '—';
-  return `<tr onclick="openFicha('${p.id}')">
-    <td class="nm">${x(p.nombre)}</td>
+  const nameCell = isSub
+    ? `<td style="color:var(--txt3);font-size:11px;padding-left:22px">↳ función</td>`
+    : `<td class="nm">${x(p.nombre)}</td>`;
+  return `<tr onclick="openFicha('${p.id}')" ${isSub?'style="background:rgba(255,255,255,.015)"':''}>
+    ${nameCell}
     <td style="font-size:11px">${roles.map(r=>x(r)).join(', ')||'—'}</td>
     <td style="font-size:11px;color:var(--txt2)">${cats.map(c=>x(c)).join(', ')||'—'}</td>
     <td>${eb}</td>
