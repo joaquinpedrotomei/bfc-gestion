@@ -691,31 +691,81 @@ async function showNuevoPago(pagoId) {
 
   const activos = S.personal.filter(p=>p.estado==='Activo');
 
+  // Construir detMap si es edición
+  let detMap = {};
   if (pagoId) {
     const pago = S.pagos.find(p=>p.id===pagoId);
     document.getElementById('pp').value = pago?.periodo||'';
     document.getElementById('po').value = pago?.observaciones||'';
-    const detMap = {};
     (pago?.detalles||[]).forEach(d => { detMap[d.personaId] = d.monto; });
-    document.getElementById('pgrid').innerHTML = activos.map(p => {
-      const enDet = p.id in detMap;
-      const monto = enDet ? detMap[p.id] : ((p.basico||0)+(p.bono||0));
-      return `<div class="pgr" data-id="${p.id}" data-nombre="${x(p.nombre)}" data-rol="${x(p.rol)}" data-cat="${x(p.categoria||'')}">
-        <span>${x(p.nombre)}</span><span>${x(p.rol)}</span>
-        <input type="number" class="pm" value="${monto}" min="0" oninput="calcPagTotal()">
-        <div class="pgr-chk"><input type="checkbox" class="pc" ${enDet?'checked':''} onchange="calcPagTotal()"></div>
-      </div>`;
-    }).join('');
   } else {
     document.getElementById('pp').value = '';
     document.getElementById('po').value = '';
-    document.getElementById('pgrid').innerHTML = activos.map(p => `
-      <div class="pgr" data-id="${p.id}" data-nombre="${x(p.nombre)}" data-rol="${x(p.rol)}" data-cat="${x(p.categoria||'')}">
-        <span>${x(p.nombre)}</span><span>${x(p.rol)}</span>
-        <input type="number" class="pm" value="${(p.basico||0)+(p.bono||0)}" min="0" oninput="calcPagTotal()">
-        <div class="pgr-chk"><input type="checkbox" class="pc" checked onchange="calcPagTotal()"></div>
-      </div>`).join('');
   }
+
+  // Agrupar activos por nombre
+  const groups  = {};
+  const order   = [];
+  activos.forEach(p => {
+    if (!groups[p.nombre]) { groups[p.nombre]=[]; order.push(p.nombre); }
+    groups[p.nombre].push(p);
+  });
+
+  // Construir grilla con agrupación
+  const pgrid = document.getElementById('pgrid');
+  pgrid.innerHTML = '';
+
+  order.forEach(nombre => {
+    const personas = groups[nombre];
+    const cats = [...new Set(personas.flatMap(p =>
+      Array.isArray(p.categorias) ? p.categorias : (p.categoria ? [p.categoria] : [])
+    ))];
+
+    if (personas.length > 1) {
+      // Header del grupo
+      const hd = document.createElement('div');
+      hd.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 130px 50px;background:var(--bg2);border-bottom:1px solid var(--border2);border-left:3px solid var(--red)';
+      hd.innerHTML = `<span style="padding:7px 11px;font-size:11px;font-weight:600;color:var(--txt);grid-column:1/3">${x(nombre)}</span><span style="padding:7px 11px;font-size:10px;color:var(--txt3)">${personas.length} funciones</span><span></span>`;
+      pgrid.appendChild(hd);
+    }
+
+    personas.forEach(p => {
+      const roles   = Array.isArray(p.roles) ? p.roles : (p.rol ? [p.rol] : []);
+      const pCats   = Array.isArray(p.categorias) ? p.categorias : (p.categoria ? [p.categoria] : []);
+      const enDet   = p.id in detMap;
+      const monto   = enDet ? detMap[p.id] : ((p.basico||0)+(p.bono||0));
+      const checked = pagoId ? enDet : true;
+      const isSub   = personas.length > 1;
+
+      const row = document.createElement('div');
+      row.className = 'pgr';
+      row.dataset.id     = p.id;
+      row.dataset.nombre = p.nombre;
+      row.dataset.rol    = roles[0]||'';
+      row.dataset.cat    = pCats[0]||'';
+
+      const nameHtml = isSub
+        ? `<span style="padding-left:18px;color:var(--txt3);font-size:11px">↳ ${roles.join(', ')||'—'} <span style="color:var(--txt3);opacity:.6">${pCats.join(', ')||''}</span></span>`
+        : `<span>${x(p.nombre)}</span>`;
+      const rolHtml = isSub
+        ? `<span style="color:var(--txt3);font-size:11px">${pCats.join(', ')||'—'}</span>`
+        : `<span style="font-size:11px">${roles.join(', ')||x(p.rol)||'—'}</span>`;
+
+      row.innerHTML = `
+        ${nameHtml}
+        ${isSub ? '' : rolHtml}
+        <input type="number" class="pm" value="${monto}" min="0" oninput="calcPagTotal()">
+        <div class="pgr-chk"><input type="checkbox" class="pc" ${checked?'checked':''} onchange="calcPagTotal()"></div>`;
+
+      // Ajustar grid si es subfunción (nombre + rol fusionados)
+      if (isSub) {
+        row.style.gridTemplateColumns = '3fr 130px 50px';
+      }
+
+      pgrid.appendChild(row);
+    });
+  });
+
   calcPagTotal();
 }
 window.showNuevoPago = showNuevoPago;
@@ -729,7 +779,20 @@ window.hidePagoForm = () => {
 window.filtrarPagoGrid = () => {
   const cat = document.getElementById('pp-cat').value;
   document.querySelectorAll('.pgr').forEach(r => {
-    r.style.display = (!cat || r.dataset.cat===cat) ? '' : 'none';
+    if (!cat) { r.style.display = ''; return; }
+    // data-cat puede ser una sola categoría; comparar
+    const pCat = r.dataset.cat || '';
+    r.style.display = pCat === cat ? '' : 'none';
+  });
+  // Ocultar headers de grupo si todos sus hijos están ocultos
+  document.querySelectorAll('#pgrid > div:not(.pgr)').forEach(hd => {
+    let next = hd.nextElementSibling;
+    let allHidden = true;
+    while (next && next.classList.contains('pgr')) {
+      if (next.style.display !== 'none') { allHidden = false; break; }
+      next = next.nextElementSibling;
+    }
+    hd.style.display = allHidden ? 'none' : '';
   });
   calcPagTotal();
 };
