@@ -55,6 +55,7 @@ onAuthStateChanged(auth, user => {
 
 document.getElementById('lp').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 document.getElementById('lu').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('lp').focus(); });
+document.getElementById('login-btn').addEventListener('click', doLogin);
 
 async function doLogin() {
   const email = document.getElementById('lu').value.trim();
@@ -1612,7 +1613,7 @@ c-288 162 -534 299 -547 305 -5 2 -8 -284 -8 -635z"/></g></svg>
       <div class="login-field"><label>Contraseña</label><input type="password" id="lp" autocomplete="current-password" placeholder="••••••••"></div>
     </div>
     <div class="login-bottom">
-      <button class="login-btn" onclick="doLogin()">Ingresar</button>
+      <button class="login-btn" id="login-btn">Ingresar</button>
       <div class="login-err" id="lerr"></div>
     </div>
   </div>
