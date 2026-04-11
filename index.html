@@ -1532,6 +1532,8 @@ function setSortPag(key) {
   calcPagTotal();
 }
 window.setSortPag = setSortPag;
+
+window.hidePagoForm = () => {
   document.getElementById('pag-hist').style.display = 'block';
   document.getElementById('pag-form').style.display = 'none';
   S.pagoEditId = null;
