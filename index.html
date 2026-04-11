@@ -6,7 +6,695 @@
 <title>BFC Gestión</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- Firebase SDKs -->
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#C8102E;--red-dk:#9b0d22;
+  --bg:#0f0f0f;--bg1:#161616;--bg2:#1e1e1e;--bg3:#2a2a2a;
+  --border:#2a2a2a;--border2:#3d3d3d;
+  --txt:#f0f0f0;--txt2:#c0c0c0;--txt3:#707070;
+  --green:#22c55e;--amber:#f59e0b;
+  --mono:'JetBrains Mono','Consolas',monospace;
+  --sans:'Inter','DM Sans',system-ui,sans-serif;
+}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=DM+Serif+Display&display=swap');
+body{font-family:var(--sans);background:var(--bg);color:var(--txt);min-height:100vh;font-size:15px;-webkit-font-smoothing:antialiased;font-weight:400}
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);background-image:radial-gradient(ellipse 600px 400px at 15% 60%,rgba(200,16,46,.07) 0%,transparent 70%),radial-gradient(ellipse 400px 300px at 85% 20%,rgba(200,16,46,.04) 0%,transparent 70%)}
+.login-box{width:320px;background:var(--bg1);border:1px solid var(--border2)}
+.login-top{padding:32px 28px 24px;border-bottom:1px solid var(--border)}
+.login-shield{display:flex;align-items:center;gap:14px;margin-bottom:24px}
+.login-shield svg{flex-shrink:0;filter:drop-shadow(0 2px 8px rgba(200,16,46,.3))}
+.login-brand h1{font-family:'DM Serif Display',serif;font-size:20px;font-weight:400;color:var(--txt);line-height:1.2}
+.login-brand span{font-size:10px;color:var(--txt3);letter-spacing:2px;text-transform:uppercase}
+.login-field{margin-bottom:12px}
+.login-field label{display:block;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--txt3);margin-bottom:5px}
+.login-field input{width:100%;padding:9px 11px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);font-family:var(--mono);font-size:13px;outline:none;transition:border .15s}
+.login-field input:focus{border-color:var(--red)}
+.login-bottom{padding:16px 28px 20px}
+.login-btn{width:100%;padding:10px;background:var(--red);border:none;color:#fff;font-family:var(--sans);font-weight:500;font-size:13px;cursor:pointer;transition:background .15s}
+.login-btn:hover{background:var(--red-dk)}
+.login-err{font-size:11px;color:var(--red);margin-top:8px;min-height:16px;text-align:center}
+#app{display:none;flex-direction:column;min-height:100vh}
+.topbar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:var(--bg1);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;flex-shrink:0}
+.topbar-l{display:flex;align-items:center;gap:14px}
+.topbar-logo{display:flex;align-items:center;gap:9px}
+.topbar-logo span{font-family:'DM Serif Display',serif;font-size:16px;color:var(--txt)}
+.topbar-r{display:flex;align-items:center;gap:12px}
+.topbar-user{font-size:11px;color:var(--txt3)}
+.topbar-out{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);cursor:pointer;padding:3px 8px;border:1px solid var(--border);transition:all .15s}
+.topbar-out:hover{color:var(--red);border-color:var(--red)}
+.nav{display:flex;padding:0 20px;background:var(--bg1);border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0}
+.nav-item{padding:10px 16px;cursor:pointer;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--txt3);border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s;user-select:none}
+.nav-item:hover{color:var(--txt2)}
+.nav-item.active{color:var(--red);border-bottom-color:var(--red)}
+.main{flex:1;padding:22px 24px;max-width:1400px;width:100%;margin:0 auto}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+.ph h2{font-size:18px;font-weight:600}.ph p{font-size:11px;color:var(--txt3);margin-top:3px}
+.ph-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{padding:8px 16px;font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;border:none;font-family:var(--sans);transition:all .15s;display:inline-flex;align-items:center;gap:5px}
+.btn-primary{background:var(--red);color:#fff}.btn-primary:hover{background:var(--red-dk)}
+.btn-secondary{background:var(--bg3);color:var(--txt2);border:1px solid var(--border2)}.btn-secondary:hover{color:var(--txt);border-color:var(--txt3)}
+.btn-ghost{background:transparent;color:var(--txt3);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--border2);color:var(--txt2)}
+.btn-danger{background:transparent;color:var(--red);border:1px solid rgba(200,16,46,.4)}.btn-danger:hover{background:var(--red);color:#fff}
+.btn-sm{padding:5px 10px;font-size:10px}
+.filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.fi{padding:8px 11px;background:var(--bg2);border:1px solid var(--border);color:var(--txt);font-family:var(--sans);font-size:12px;outline:none;transition:border .15s}
+.fi:focus{border-color:var(--red)}.fi-search{min-width:200px}
+
+/* MULTI-SELECT CHIPS */
+.ms-wrap{position:relative;display:inline-block}
+.ms-btn{display:flex;align-items:center;gap:6px;padding:7px 11px;background:var(--bg2);border:1px solid var(--border);color:var(--txt2);font-family:var(--sans);font-size:12px;cursor:pointer;user-select:none;min-width:140px;transition:border .15s}
+.ms-btn:hover,.ms-btn.open{border-color:var(--border2)}
+.ms-btn.active{border-color:var(--red);color:var(--txt)}
+.ms-btn .ms-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms-btn .ms-arrow{font-size:9px;color:var(--txt3);flex-shrink:0;transition:transform .15s}
+.ms-btn.open .ms-arrow{transform:rotate(180deg)}
+.ms-dropdown{display:none;position:absolute;top:calc(100% + 3px);left:0;min-width:100%;background:var(--bg1);border:1px solid var(--border2);z-index:500;box-shadow:0 8px 24px rgba(0,0,0,.4);max-height:260px;overflow-y:auto}
+.ms-dropdown.open{display:block}
+.ms-item{display:flex;align-items:center;gap:9px;padding:8px 12px;cursor:pointer;font-size:12px;color:var(--txt2);transition:background .1s;white-space:nowrap}
+.ms-item:hover{background:var(--bg2)}
+.ms-item.checked{color:var(--txt)}
+.ms-item input[type=checkbox]{width:13px;height:13px;accent-color:var(--red);flex-shrink:0;cursor:pointer}
+.ms-clear{display:flex;align-items:center;justify-content:center;padding:7px;border-top:1px solid var(--border);cursor:pointer;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--txt3);transition:color .15s}
+.ms-clear:hover{color:var(--red)}
+/* chips en el filtro */
+.ms-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.ms-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;background:var(--red-lt,rgba(200,16,46,.12));border:1px solid rgba(200,16,46,.25);color:var(--red);font-size:10px;font-weight:600;letter-spacing:.3px}
+.ms-chip button{background:none;border:none;color:inherit;cursor:pointer;padding:0;font-size:12px;line-height:1;opacity:.7}
+.ms-chip button:hover{opacity:1}
+.tw{overflow-x:auto;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead tr{background:var(--bg2);border-bottom:1px solid var(--border2)}
+thead th{padding:9px 13px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);white-space:nowrap}
+thead th.sortable{cursor:pointer;user-select:none;transition:color .15s}
+thead th.sortable:hover{color:var(--txt2)}
+thead th.sort-asc::after{content:' ↑';color:var(--red)}
+thead th.sort-desc::after{content:' ↓';color:var(--red)}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--bg2)}
+tbody td{padding:9px 13px;color:var(--txt2);white-space:nowrap;font-size:13px}
+td.nm{color:var(--txt);font-weight:600}
+td.mo{font-family:var(--mono);font-size:12px;color:var(--txt2)}
+td.mo-total{font-family:var(--mono);font-size:13px;color:var(--txt);font-weight:700}
+.empty{text-align:center;padding:40px;color:var(--txt3);font-size:12px;cursor:default!important}
+.empty:hover{background:transparent!important}
+tr.group-hd td{background:var(--bg2);color:var(--txt2);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:7px 13px;cursor:default!important;border-bottom:1px solid var(--border2)}
+tr.group-hd:hover{background:var(--bg2)!important}
+.badge{display:inline-block;padding:2px 7px;font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase}
+.ba{background:rgba(200,16,46,.15);color:#e84060}.bb{background:rgba(245,158,11,.12);color:var(--amber)}
+.bc{background:rgba(34,197,94,.1);color:var(--green)}.bd{background:rgba(148,163,184,.1);color:#94a3b8}
+.bactivo{background:rgba(34,197,94,.1);color:var(--green)}.bbaja{background:rgba(200,16,46,.1);color:#e84060}
+.total-bar{display:flex;align-items:center;gap:20px;padding:10px 14px;background:var(--bg1);border:1px solid var(--border);border-top:none;flex-wrap:wrap}
+.total-bar-item{font-size:11px;color:var(--txt3)}.total-bar-item strong{font-family:var(--mono);color:var(--txt);margin-left:4px}
+.total-bar-item.accent strong{color:var(--green)}
+.mo-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:36px 16px}
+.mo-overlay.open{display:flex}
+.mo{background:var(--bg1);border:1px solid var(--border2);width:100%;max-width:660px;animation:moIn .18s ease}
+@keyframes moIn{from{transform:translateY(-10px);opacity:0}to{transform:translateY(0);opacity:1}}
+.mo-hd{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.mo-hd h3{font-size:14px;font-weight:600}.mo-x{cursor:pointer;color:var(--txt3);font-size:22px;line-height:1;padding:0 4px}.mo-x:hover{color:var(--txt)}
+.mo-bd{padding:20px}.mo-ft{padding:13px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:13px}.fg3{grid-template-columns:1fr 1fr 1fr}.ff{grid-column:1/-1}
+.fg label{display:block;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);margin-bottom:5px}
+.fg input,.fg select,.fg textarea{width:100%;padding:8px 10px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);font-family:var(--sans);font-size:12px;outline:none;transition:border .15s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--red)}.fg textarea{resize:vertical;min-height:64px}
+.fs{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--red);margin:16px 0 8px;border-bottom:1px solid var(--border);padding-bottom:5px}.fs:first-child{margin-top:0}
+.fg-row{display:flex;flex-direction:column;gap:5px}.fg-row label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3)}
+.fg-row input,.fg-row select,.fg-row textarea{padding:8px 10px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);font-family:var(--sans);font-size:12px;outline:none;transition:border .15s;width:100%}
+.fg-row input:focus,.fg-row select:focus{border-color:var(--red)}
+/* multi-select en modal */
+.ms-modal-wrap{border:1px solid var(--border2);background:var(--bg2);padding:6px 8px;min-height:38px;cursor:text}
+.ms-modal-chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
+.ms-modal-chip{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:var(--bg3);border:1px solid var(--border2);color:var(--txt2);font-size:10px}
+.ms-modal-chip button{background:none;border:none;color:var(--txt3);cursor:pointer;padding:0;font-size:12px;line-height:1}
+.ms-modal-chip button:hover{color:var(--red)}
+.ms-modal-opts{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.ms-modal-opt{padding:3px 9px;font-size:10px;font-weight:600;letter-spacing:.3px;cursor:pointer;border:1px solid var(--border2);color:var(--txt3);background:transparent;transition:all .15s;user-select:none}
+.ms-modal-opt:hover{border-color:var(--border2);color:var(--txt2)}
+.ms-modal-opt.sel{background:var(--red);border-color:var(--red);color:#fff}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:20px}
+.sc{background:var(--bg1);border:1px solid var(--border);padding:16px 18px}.sc.accent{border-left:3px solid var(--red)}
+.sc .lbl{font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--txt3);margin-bottom:7px}
+.sc .val{font-size:24px;font-weight:300;font-family:var(--mono);color:var(--txt)}.sc .sub{font-size:10px;color:var(--txt3);margin-top:3px}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
+.cb{background:var(--bg1);border:1px solid var(--border);padding:18px}
+.cb h4{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt3);margin-bottom:14px}
+.bar-chart{display:flex;flex-direction:column;gap:9px}.bar-row{display:flex;align-items:center;gap:10px}
+.bar-lbl{width:120px;font-size:11px;color:var(--txt2);text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;height:5px;background:var(--bg3)}.bar-fill{height:100%;background:var(--red);transition:width .5s ease}
+.bar-v{width:90px;font-size:10px;font-family:var(--mono);color:var(--txt3);text-align:right;flex-shrink:0}
+.pago-list{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.pago-item{background:var(--bg1);border:1px solid var(--border);padding:11px 15px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.pago-item:hover{border-color:var(--border2)}.pago-periodo{font-weight:600;font-size:13px}
+.pago-fecha{font-size:10px;color:var(--txt3);margin-top:2px}.pago-monto{font-family:var(--mono);color:var(--green);font-size:14px}
+.pago-grid-hd{display:grid;grid-template-columns:2fr 1fr 120px 110px 50px;background:var(--bg2);border-bottom:1px solid var(--border2)}
+.pago-grid-hd span{padding:8px 11px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt3)}
+.pgr{display:grid;grid-template-columns:2fr 1fr 120px 110px 50px;border-bottom:1px solid var(--border);align-items:center}
+.pgr:last-child{border-bottom:none}.pgr span{padding:8px 11px;font-size:12px;color:var(--txt2)}
+.pgr input[type=number]{padding:7px 11px;background:transparent;border:none;border-left:1px solid var(--border);color:var(--txt);font-family:var(--mono);font-size:12px;outline:none;width:100%}
+.pgr input[type=number]:focus{background:var(--bg2)}
+.pgr-chk{display:flex;align-items:center;justify-content:center;border-left:1px solid var(--border);height:100%}
+.pgr-chk input{width:14px;height:14px;cursor:pointer;accent-color:var(--red)}
+.pago-total-row{display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);border-top:1px solid var(--border)}
+.pago-total-row span{font-size:11px;color:var(--txt3)}.pago-total-row strong{font-family:var(--mono);font-size:16px;color:var(--green)}
+.proy-bar{display:flex;gap:10px;align-items:center;background:var(--bg1);border:1px solid var(--border);padding:13px 16px;margin-bottom:18px;flex-wrap:wrap}
+.proy-bar label{font-size:11px;color:var(--txt3)}
+.proy-bar input{width:72px;padding:6px 9px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);font-family:var(--mono);font-size:13px;outline:none;text-align:center}
+.proy-bar input:focus{border-color:var(--red)}
+.proy-sum{margin-left:auto;display:flex;align-items:center;gap:6px}.proy-sum span{font-size:11px;color:var(--txt3)}
+.proy-sum strong{font-family:var(--mono);font-size:16px;color:var(--green)}
+.proy-delta-pos{color:var(--amber)}.proy-delta-neg{color:var(--green)}
+.drop-zone{border:2px dashed var(--border2);padding:28px;text-align:center;cursor:pointer;transition:border-color .2s;background:var(--bg1)}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--red)}.drop-zone p{color:var(--txt3);font-size:12px;margin-top:7px}.drop-zone strong{color:var(--txt);font-size:14px}
+.cols-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.cols-list code{background:var(--bg2);border:1px solid var(--border);padding:2px 7px;font-size:10px;color:var(--txt2);font-family:var(--mono)}
+.ficha-g{display:grid;grid-template-columns:1fr 1fr;gap:0}.ficha-sec{padding:14px 0}
+.ficha-sec h4{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--red);margin-bottom:10px}
+.fr{display:flex;gap:8px;margin-bottom:7px;font-size:12px}.fk{color:var(--txt3);min-width:100px;flex-shrink:0;font-size:11px}.fv{color:var(--txt);font-family:var(--mono);font-size:11px;word-break:break-all}
+.toast{position:fixed;bottom:22px;right:22px;z-index:9999;background:var(--bg2);border:1px solid var(--border2);padding:11px 16px;font-size:12px;color:var(--txt);display:none;max-width:300px}
+.toast.show{display:block;animation:tin .2s ease}.toast.ok{border-left:3px solid var(--green)}.toast.er{border-left:3px solid var(--red)}
+@keyframes tin{from{transform:translateY(6px);opacity:0}to{transform:translateY(0);opacity:1}}
+.lov{display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.5);align-items:center;justify-content:center}
+.lov.show{display:flex}.sp{width:30px;height:30px;border:2px solid var(--border2);border-top-color:var(--red);border-radius:50%;animation:spin .65s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:640px){.fg{grid-template-columns:1fr}.charts{grid-template-columns:1fr}.ficha-g{grid-template-columns:1fr}.pago-grid-hd,.pgr{grid-template-columns:2fr 120px 44px}.pago-grid-hd span:nth-child(2),.pgr span:nth-child(2){display:none}}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<div class="lov" id="lov"><div class="sp"></div></div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-top">
+      <div class="login-shield">
+        <svg width="56" height="56" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1092 1094"><g transform="translate(0,1094) scale(0.1,-0.1)" fill="#C8102E" fill-rule="evenodd"><path d="Mm5674 2590 l164 -70 816 0 816 0 -2 -422 -3 -423 -1933 -2 c-1063 -1
+-1946 0 -1962 4 l-30 6 0 418 0 419 818 0 817 1 160 69 c88 38 164 69 168 69
+4 1 81 -30 171 -69z m1794 -2742 l-3 -1693 -28 -61 c-56 -120 -37 -108 -1237
+-774 -96 -54 -290 -162 -430 -240 -140 -79 -260 -143 -265 -143 -6 0 -211 111
+-455 248 -245 136 -638 356 -875 487 -236 132 -453 255 -482 274 -28 20 -68
+59 -87 87 -71 104 -66 -41 -66 1823 l0 1684 1965 0 1965 0 -2 -1692z"/><path d="M5345 7919 l-160 -68 -752 -1 -753 0 0 -280 0 -280 1825 0 1825 0 0
+280 0 280 -753 0 -754 0 -139 61 c-76 33 -148 64 -159 69 -15 5 -64 -11 -180
+-61z m-1170 -240 c24 -23 34 -63 24 -94 -1 -5 3 -28 10 -51 11 -35 11 -45 -2
+-71 -22 -41 -60 -54 -148 -51 l-74 3 -3 134 c-1 74 0 141 3 149 4 11 23 13 85
+10 70 -3 83 -6 105 -29z m347 -109 c26 -74 48 -141 48 -147 0 -8 -13 -13 -31
+-13 -24 0 -32 6 -40 30 -10 28 -14 30 -63 30 -48 0 -52 -2 -63 -30 -9 -24 -17
+-30 -42 -30 -17 0 -31 2 -31 5 0 5 83 248 95 278 6 14 16 17 43 15 l36 -3 48
+-135z m311 129 c69 -19 87 -102 32 -153 l-24 -22 30 -50 c16 -27 29 -52 29
+-56 0 -5 -15 -8 -34 -8 -31 0 -37 5 -65 55 -17 30 -38 55 -46 55 -11 0 -15
+-13 -15 -55 0 -54 0 -55 -30 -55 l-30 0 0 150 0 150 58 0 c31 0 74 -5 95 -11z
+m346 0 c62 -22 80 -103 32 -148 l-28 -27 28 -49 c16 -28 29 -53 29 -57 0 -5
+-15 -8 -34 -8 -31 0 -37 5 -63 52 -38 70 -51 72 -55 6 -3 -52 -4 -53 -35 -56
+l-33 -3 0 144 c0 79 3 147 7 150 10 11 117 8 152 -4z m328 -1 c9 -11 103 -271
+103 -284 0 -2 -15 -4 -34 -4 -29 0 -36 5 -45 30 -9 28 -13 30 -59 30 -46 0
+-51 -2 -62 -30 -10 -24 -19 -30 -41 -30 -19 0 -29 5 -29 14 0 15 84 259 95
+277 9 13 61 11 72 -3z m355 -89 l53 -100 5 98 5 98 30 0 30 0 3 -148 3 -148
+-48 3 -48 3 -57 105 -58 105 0 -108 0 -108 -32 3 -33 3 -3 134 c-1 74 0 141 2
+148 3 8 23 13 50 13 l45 0 53 -101z m468 86 c36 -18 37 -29 9 -49 -16 -11 -28
+-12 -47 -5 -53 20 -112 -23 -112 -83 0 -64 60 -103 120 -78 26 11 33 10 50 -5
+26 -24 25 -28 -9 -48 -40 -24 -117 -22 -159 3 -35 22 -71 87 -72 131 0 41 42
+110 80 130 42 23 101 24 140 4z m297 3 c5 -7 29 -69 53 -138 23 -69 45 -131
+47 -137 4 -9 -6 -13 -30 -13 -30 0 -37 4 -46 30 -9 28 -13 30 -61 30 -48 0
+-52 -2 -61 -30 -9 -25 -16 -30 -45 -30 l-33 0 45 132 c25 72 49 139 55 150 11
+21 61 25 76 6z m351 -4 c22 -15 23 -17 5 -36 -11 -13 -26 -18 -42 -15 -34 7
+-51 -2 -51 -24 0 -12 10 -21 28 -25 79 -19 115 -68 92 -124 -7 -17 -22 -37
+-34 -45 -28 -20 -106 -19 -135 2 l-24 16 23 19 c16 13 32 17 54 13 68 -12 75
+36 8 54 -44 12 -67 34 -77 72 -8 30 15 82 42 98 27 16 86 13 111 -5z"/><path d="M4050 7620 c0 -19 5 -21 43 -18 29 2 42 8 42 18 0 10 -13 16 -42 18
+-38 3 -43 1 -43 -18z"/><path d="M4050 7505 c0 -25 2 -26 48 -23 39 3 47 6 47 23 0 17 -8 20 -47 23
+-46 3 -48 2 -48 -23z"/><path d="M4423 7575 c-11 -34 -10 -35 14 -35 21 0 23 3 17 23 -14 46 -20 48
+-31 12z"/><path d="M4740 7615 c0 -25 3 -26 43 -23 34 2 42 7 42 23 0 16 -8 21 -42 23
+-40 3 -43 2 -43 -23z"/><path d="M5090 7616 c0 -24 4 -26 41 -26 36 0 40 2 37 23 -2 18 -10 23 -40 25
+-35 3 -38 1 -38 -22z"/><path d="M5460 7586 c-15 -40 -13 -46 14 -46 24 0 24 2 14 33 -15 43 -16 44
+-28 13z"/><path d="M6576 7578 c-9 -35 -8 -38 14 -38 11 0 20 3 20 8 0 19 -13 52 -20 52
+-4 0 -10 -10 -14 -22z"/><path d="M3680 5263 c0 -1535 1 -1600 19 -1638 10 -22 34 -54 52 -71 19 -17
+194 -121 389 -229 195 -109 488 -272 650 -363 631 -352 703 -392 713 -392 11
+0 118 59 1112 614 656 366 678 381 703 464 9 29 12 435 12 1626 l0 1586 -1825
+0 -1825 0 0 -1597z m1060 1312 c62 -32 60 -11 60 -717 l0 -644 148 -82 c81
+-45 206 -115 277 -155 l130 -73 0 -954 c0 -850 -2 -955 -15 -958 -9 -1 -173
+86 -365 194 -579 324 -603 338 -800 449 -104 59 -197 113 -205 121 -13 13 -15
+180 -15 1389 l0 1373 25 27 c14 15 34 31 45 35 11 5 170 9 353 9 279 1 338 -1
+362 -14z m2310 -130 l0 -145 -842 -2 -843 -3 -3 -132 -3 -133 843 -2 843 -3 3
+-142 3 -143 -846 0 -845 0 -2 -278 -3 -279 -137 76 -138 76 0 582 c0 354 4
+592 10 607 5 14 24 35 42 46 32 20 51 20 976 20 l942 0 0 -145z m-34 -1019
+l34 -34 -2 -249 -3 -248 -140 0 -140 0 -5 140 -5 140 -404 3 c-290 1 -408 -1
+-417 -9 -22 -18 -21 -1671 1 -1689 17 -14 -23 -34 490 254 l330 185 5 68 5 68
+143 3 142 3 0 -139 c0 -159 -2 -165 -83 -210 -243 -137 -1059 -594 -1162 -652
+-96 -54 -133 -70 -145 -62 -13 8 -15 145 -18 1202 l-2 1192 34 34 34 34 637 0
+637 0 34 -34z"/><path d="M4247 6294 c-4 -4 -7 -177 -7 -385 l0 -378 134 -75 c74 -42 137 -76
+140 -76 3 0 5 206 4 458 l-3 457 -131 3 c-71 1 -133 -1 -137 -4z"/><path d="M4240 4563 l0 -639 38 -21 c20 -12 55 -31 77 -43 22 -12 188 -105
+368 -207 268 -150 331 -182 343 -172 12 10 14 100 12 633 l-3 621 -280 158
+c-288 162 -534 299 -547 305 -5 2 -8 -284 -8 -635z"/></g></svg>
+        <div class="login-brand"><h1>BFC Gestión</h1><span>Sistema Administrativo</span></div>
+      </div>
+      <div class="login-field"><label>Email</label><input type="email" id="lu" autocomplete="username" placeholder="email@ejemplo.com"></div>
+      <div class="login-field"><label>Contraseña</label><input type="password" id="lp" autocomplete="current-password" placeholder="••••••••"></div>
+    </div>
+    <div class="login-bottom">
+      <button class="login-btn" id="login-btn">Ingresar</button>
+      <div class="login-err" id="lerr"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-l">
+      <div class="topbar-logo">
+        <svg width="26" height="26" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1092 1094"><g transform="translate(0,1094) scale(0.1,-0.1)" fill="#C8102E" fill-rule="evenodd"><path d="Mm5674 2590 l164 -70 816 0 816 0 -2 -422 -3 -423 -1933 -2 c-1063 -1
+-1946 0 -1962 4 l-30 6 0 418 0 419 818 0 817 1 160 69 c88 38 164 69 168 69
+4 1 81 -30 171 -69z m1794 -2742 l-3 -1693 -28 -61 c-56 -120 -37 -108 -1237
+-774 -96 -54 -290 -162 -430 -240 -140 -79 -260 -143 -265 -143 -6 0 -211 111
+-455 248 -245 136 -638 356 -875 487 -236 132 -453 255 -482 274 -28 20 -68
+59 -87 87 -71 104 -66 -41 -66 1823 l0 1684 1965 0 1965 0 -2 -1692z"/><path d="M5345 7919 l-160 -68 -752 -1 -753 0 0 -280 0 -280 1825 0 1825 0 0
+280 0 280 -753 0 -754 0 -139 61 c-76 33 -148 64 -159 69 -15 5 -64 -11 -180
+-61z m-1170 -240 c24 -23 34 -63 24 -94 -1 -5 3 -28 10 -51 11 -35 11 -45 -2
+-71 -22 -41 -60 -54 -148 -51 l-74 3 -3 134 c-1 74 0 141 3 149 4 11 23 13 85
+10 70 -3 83 -6 105 -29z m347 -109 c26 -74 48 -141 48 -147 0 -8 -13 -13 -31
+-13 -24 0 -32 6 -40 30 -10 28 -14 30 -63 30 -48 0 -52 -2 -63 -30 -9 -24 -17
+-30 -42 -30 -17 0 -31 2 -31 5 0 5 83 248 95 278 6 14 16 17 43 15 l36 -3 48
+-135z m311 129 c69 -19 87 -102 32 -153 l-24 -22 30 -50 c16 -27 29 -52 29
+-56 0 -5 -15 -8 -34 -8 -31 0 -37 5 -65 55 -17 30 -38 55 -46 55 -11 0 -15
+-13 -15 -55 0 -54 0 -55 -30 -55 l-30 0 0 150 0 150 58 0 c31 0 74 -5 95 -11z
+m346 0 c62 -22 80 -103 32 -148 l-28 -27 28 -49 c16 -28 29 -53 29 -57 0 -5
+-15 -8 -34 -8 -31 0 -37 5 -63 52 -38 70 -51 72 -55 6 -3 -52 -4 -53 -35 -56
+l-33 -3 0 144 c0 79 3 147 7 150 10 11 117 8 152 -4z m328 -1 c9 -11 103 -271
+103 -284 0 -2 -15 -4 -34 -4 -29 0 -36 5 -45 30 -9 28 -13 30 -59 30 -46 0
+-51 -2 -62 -30 -10 -24 -19 -30 -41 -30 -19 0 -29 5 -29 14 0 15 84 259 95
+277 9 13 61 11 72 -3z m355 -89 l53 -100 5 98 5 98 30 0 30 0 3 -148 3 -148
+-48 3 -48 3 -57 105 -58 105 0 -108 0 -108 -32 3 -33 3 -3 134 c-1 74 0 141 2
+148 3 8 23 13 50 13 l45 0 53 -101z m468 86 c36 -18 37 -29 9 -49 -16 -11 -28
+-12 -47 -5 -53 20 -112 -23 -112 -83 0 -64 60 -103 120 -78 26 11 33 10 50 -5
+26 -24 25 -28 -9 -48 -40 -24 -117 -22 -159 3 -35 22 -71 87 -72 131 0 41 42
+110 80 130 42 23 101 24 140 4z m297 3 c5 -7 29 -69 53 -138 23 -69 45 -131
+47 -137 4 -9 -6 -13 -30 -13 -30 0 -37 4 -46 30 -9 28 -13 30 -61 30 -48 0
+-52 -2 -61 -30 -9 -25 -16 -30 -45 -30 l-33 0 45 132 c25 72 49 139 55 150 11
+21 61 25 76 6z m351 -4 c22 -15 23 -17 5 -36 -11 -13 -26 -18 -42 -15 -34 7
+-51 -2 -51 -24 0 -12 10 -21 28 -25 79 -19 115 -68 92 -124 -7 -17 -22 -37
+-34 -45 -28 -20 -106 -19 -135 2 l-24 16 23 19 c16 13 32 17 54 13 68 -12 75
+36 8 54 -44 12 -67 34 -77 72 -8 30 15 82 42 98 27 16 86 13 111 -5z"/><path d="M4050 7620 c0 -19 5 -21 43 -18 29 2 42 8 42 18 0 10 -13 16 -42 18
+-38 3 -43 1 -43 -18z"/><path d="M4050 7505 c0 -25 2 -26 48 -23 39 3 47 6 47 23 0 17 -8 20 -47 23
+-46 3 -48 2 -48 -23z"/><path d="M4423 7575 c-11 -34 -10 -35 14 -35 21 0 23 3 17 23 -14 46 -20 48
+-31 12z"/><path d="M4740 7615 c0 -25 3 -26 43 -23 34 2 42 7 42 23 0 16 -8 21 -42 23
+-40 3 -43 2 -43 -23z"/><path d="M5090 7616 c0 -24 4 -26 41 -26 36 0 40 2 37 23 -2 18 -10 23 -40 25
+-35 3 -38 1 -38 -22z"/><path d="M5460 7586 c-15 -40 -13 -46 14 -46 24 0 24 2 14 33 -15 43 -16 44
+-28 13z"/><path d="M6576 7578 c-9 -35 -8 -38 14 -38 11 0 20 3 20 8 0 19 -13 52 -20 52
+-4 0 -10 -10 -14 -22z"/><path d="M3680 5263 c0 -1535 1 -1600 19 -1638 10 -22 34 -54 52 -71 19 -17
+194 -121 389 -229 195 -109 488 -272 650 -363 631 -352 703 -392 713 -392 11
+0 118 59 1112 614 656 366 678 381 703 464 9 29 12 435 12 1626 l0 1586 -1825
+0 -1825 0 0 -1597z m1060 1312 c62 -32 60 -11 60 -717 l0 -644 148 -82 c81
+-45 206 -115 277 -155 l130 -73 0 -954 c0 -850 -2 -955 -15 -958 -9 -1 -173
+86 -365 194 -579 324 -603 338 -800 449 -104 59 -197 113 -205 121 -13 13 -15
+180 -15 1389 l0 1373 25 27 c14 15 34 31 45 35 11 5 170 9 353 9 279 1 338 -1
+362 -14z m2310 -130 l0 -145 -842 -2 -843 -3 -3 -132 -3 -133 843 -2 843 -3 3
+-142 3 -143 -846 0 -845 0 -2 -278 -3 -279 -137 76 -138 76 0 582 c0 354 4
+592 10 607 5 14 24 35 42 46 32 20 51 20 976 20 l942 0 0 -145z m-34 -1019
+l34 -34 -2 -249 -3 -248 -140 0 -140 0 -5 140 -5 140 -404 3 c-290 1 -408 -1
+-417 -9 -22 -18 -21 -1671 1 -1689 17 -14 -23 -34 490 254 l330 185 5 68 5 68
+143 3 142 3 0 -139 c0 -159 -2 -165 -83 -210 -243 -137 -1059 -594 -1162 -652
+-96 -54 -133 -70 -145 -62 -13 8 -15 145 -18 1202 l-2 1192 34 34 34 34 637 0
+637 0 34 -34z"/><path d="M4247 6294 c-4 -4 -7 -177 -7 -385 l0 -378 134 -75 c74 -42 137 -76
+140 -76 3 0 5 206 4 458 l-3 457 -131 3 c-71 1 -133 -1 -137 -4z"/><path d="M4240 4563 l0 -639 38 -21 c20 -12 55 -31 77 -43 22 -12 188 -105
+368 -207 268 -150 331 -182 343 -172 12 10 14 100 12 633 l-3 621 -280 158
+c-288 162 -534 299 -547 305 -5 2 -8 -284 -8 -635z"/></g></svg>
+        <span>Gestión</span>
+      </div>
+    </div>
+    <div class="topbar-r">
+      <span class="topbar-user" id="tu"></span>
+      <span class="topbar-out" onclick="logout()">Salir</span>
+    </div>
+  </div>
+  <div class="nav">
+    <div class="nav-item active" data-tab="dashboard">Dashboard</div>
+    <div class="nav-item" data-tab="personal">Personal</div>
+    <div class="nav-item" data-tab="pagos">Pagos</div>
+    <div class="nav-item" data-tab="proyeccion">Proyección</div>
+    <div class="nav-item" data-tab="balance">Balance</div>
+    <div class="nav-item" data-tab="bajas">Bajas</div>
+    <div class="nav-item" data-tab="importar">Importar</div>
+  </div>
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div class="tab-panel active" id="tab-dashboard">
+      <div class="ph"><div><h2>Dashboard</h2><p>Resumen general del plantel y costos</p></div><div class="ph-actions"><button class="btn btn-ghost btn-sm" onclick="loadAll()">↺ Actualizar</button></div></div>
+      <div class="stats">
+        <div class="sc accent"><div class="lbl">Personal Activo</div><div class="val" id="d-tot">—</div></div>
+        <div class="sc"><div class="lbl">Jugadores</div><div class="val" id="d-jug">—</div></div>
+        <div class="sc"><div class="lbl">Cuerpo Técnico</div><div class="val" id="d-ct">—</div></div>
+        <div class="sc"><div class="lbl">Otros Roles</div><div class="val" id="d-otros">—</div></div>
+        <div class="sc accent"><div class="lbl">Masa Salarial</div><div class="val" id="d-masa">—</div><div class="sub">básico + bono / mes</div></div>
+        <div class="sc"><div class="lbl">Solo Básicos</div><div class="val" id="d-bas">—</div></div>
+        <div class="sc"><div class="lbl">Solo Bonos</div><div class="val" id="d-bon">—</div></div>
+        <div class="sc"><div class="lbl">Promedio Jugador</div><div class="val" id="d-prom">—</div></div>
+      </div>
+      <div class="charts">
+        <div class="cb"><h4>Costo por Rol</h4><div class="bar-chart" id="ch-rol"></div></div>
+        <div class="cb"><h4>Costo por Categoría</h4><div class="bar-chart" id="ch-cat"></div></div>
+      </div>
+    </div>
+
+    <!-- PERSONAL -->
+    <div class="tab-panel" id="tab-personal">
+      <div class="ph"><div><h2>Personal</h2><p>Jugadores, cuerpo técnico y staff</p></div><div class="ph-actions"><button class="btn btn-ghost btn-sm" onclick="loadPersonal()">↺</button><button class="btn btn-primary" onclick="openMoPersona()">+ Nuevo</button></div></div>
+      <div class="filters">
+        <input class="fi fi-search" id="fs" placeholder="Buscar nombre…" oninput="renderPersonal()">
+        <!-- Multi-select Rol -->
+        <div class="ms-wrap" id="ms-rol-wrap">
+          <div class="ms-btn" id="ms-rol-btn" onclick="toggleMs('rol')">
+            <span class="ms-label" id="ms-rol-label">Todos los roles</span>
+            <span class="ms-arrow">▼</span>
+          </div>
+          <div class="ms-dropdown" id="ms-rol-dd">
+            <div class="ms-item" onclick="toggleMsItem('rol','__CT__')"><input type="checkbox" id="ms-rol-__CT__"><label for="ms-rol-__CT__">— Cuerpo Técnico —</label></div>
+            <div class="ms-item" onclick="toggleMsItem('rol','Jugador')"><input type="checkbox" id="ms-rol-Jugador"><label for="ms-rol-Jugador">Jugador</label></div>
+            <div class="ms-item" onclick="toggleMsItem('rol','DT')"><input type="checkbox" id="ms-rol-DT"><label for="ms-rol-DT">DT</label></div>
+            <div class="ms-item" onclick="toggleMsItem('rol','Ayudante de Campo')"><input type="checkbox" id="ms-rol-AyudantedeCampo"><label for="ms-rol-AyudantedeCampo">Ayudante de Campo</label></div>
+            <div class="ms-item" onclick="toggleMsItem('rol','PF')"><input type="checkbox" id="ms-rol-PF"><label for="ms-rol-PF">PF</label></div>
+            <div class="ms-item" onclick="toggleMsItem('rol','Médico')"><input type="checkbox" id="ms-rol-Medico"><label for="ms-rol-Medico">Médico</label></div>
+            <div class="ms-item" onclick="toggleMsItem('rol','Utilero')"><input type="checkbox" id="ms-rol-Utilero"><label for="ms-rol-Utilero">Utilero</label></div>
+            <div class="ms-item" onclick="toggleMsItem('rol','Mantenimiento')"><input type="checkbox" id="ms-rol-Mantenimiento"><label for="ms-rol-Mantenimiento">Mantenimiento</label></div>
+            <div class="ms-item" onclick="toggleMsItem('rol','Entrenador de Arqueros')"><input type="checkbox" id="ms-rol-EntrenadordeArqueros"><label for="ms-rol-EntrenadordeArqueros">Entrenador de Arqueros</label></div>
+            <div class="ms-item" onclick="toggleMsItem('rol','Otro')"><input type="checkbox" id="ms-rol-Otro"><label for="ms-rol-Otro">Otro</label></div>
+            <div class="ms-clear" onclick="clearMs('rol')">✕ Limpiar</div>
+          </div>
+        </div>
+        <!-- Multi-select Categoría -->
+        <div class="ms-wrap" id="ms-cat-wrap">
+          <div class="ms-btn" id="ms-cat-btn" onclick="toggleMs('cat')">
+            <span class="ms-label" id="ms-cat-label">Todas las categorías</span>
+            <span class="ms-arrow">▼</span>
+          </div>
+          <div class="ms-dropdown" id="ms-cat-dd">
+            <div class="ms-item" onclick="toggleMsItem('cat','Primera División')"><input type="checkbox" id="ms-cat-PrimeraDivision"><label for="ms-cat-PrimeraDivision">Primera División</label></div>
+            <div class="ms-item" onclick="toggleMsItem('cat','Reserva')"><input type="checkbox" id="ms-cat-Reserva"><label for="ms-cat-Reserva">Reserva</label></div>
+            <div class="ms-item" onclick="toggleMsItem('cat','4ta División')"><input type="checkbox" id="ms-cat-4ta"><label for="ms-cat-4ta">4ta División</label></div>
+            <div class="ms-item" onclick="toggleMsItem('cat','5ta División')"><input type="checkbox" id="ms-cat-5ta"><label for="ms-cat-5ta">5ta División</label></div>
+            <div class="ms-item" onclick="toggleMsItem('cat','6ta División')"><input type="checkbox" id="ms-cat-6ta"><label for="ms-cat-6ta">6ta División</label></div>
+            <div class="ms-item" onclick="toggleMsItem('cat','7ma División')"><input type="checkbox" id="ms-cat-7ma"><label for="ms-cat-7ma">7ma División</label></div>
+            <div class="ms-item" onclick="toggleMsItem('cat','8va División')"><input type="checkbox" id="ms-cat-8va"><label for="ms-cat-8va">8va División</label></div>
+            <div class="ms-item" onclick="toggleMsItem('cat','9na División')"><input type="checkbox" id="ms-cat-9na"><label for="ms-cat-9na">9na División</label></div>
+            <div class="ms-item" onclick="toggleMsItem('cat','Infantiles 2013')"><input type="checkbox" id="ms-cat-2013"><label for="ms-cat-2013">Infantiles 2013</label></div>
+            <div class="ms-item" onclick="toggleMsItem('cat','Infantiles 2014')"><input type="checkbox" id="ms-cat-2014"><label for="ms-cat-2014">Infantiles 2014</label></div>
+            <div class="ms-item" onclick="toggleMsItem('cat','Infantiles 2015')"><input type="checkbox" id="ms-cat-2015"><label for="ms-cat-2015">Infantiles 2015</label></div>
+            <div class="ms-item" onclick="toggleMsItem('cat','Infantiles 2016')"><input type="checkbox" id="ms-cat-2016"><label for="ms-cat-2016">Infantiles 2016</label></div>
+            <div class="ms-clear" onclick="clearMs('cat')">✕ Limpiar</div>
+          </div>
+        </div>
+        <select class="fi" id="fesc" onchange="renderPersonal()"><option value="">Todos los escalafones</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
+        <select class="fi" id="fe" onchange="renderPersonal()"><option value="Activo">Activos</option><option value="">Todos</option></select>
+      </div>
+      <!-- chips activos -->
+      <div id="ms-chips-container" style="display:none;margin-bottom:10px"></div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th class="sortable" onclick="setSortP('nombre')">Nombre</th>
+            <th class="sortable" onclick="setSortP('rol')">Rol</th>
+            <th class="sortable" onclick="setSortP('categoria')">Categoría</th>
+            <th class="sortable" onclick="setSortP('escalafon')">Escal.</th>
+            <th>Fac.</th>
+            <th class="sortable" onclick="setSortP('basico')">Básico</th>
+            <th class="sortable" onclick="setSortP('bono')">Bono</th>
+            <th class="sortable" onclick="setSortP('total')">Total</th>
+            <th>Estado</th><th>Acciones</th>
+          </tr></thead>
+          <tbody id="tb-p"></tbody>
+        </table>
+      </div>
+      <div class="total-bar">
+        <div class="total-bar-item">Personas: <strong id="ptb-count">—</strong></div>
+        <div class="total-bar-item">Básicos: <strong id="ptb-bas">—</strong></div>
+        <div class="total-bar-item">Bonos: <strong id="ptb-bon">—</strong></div>
+        <div class="total-bar-item accent">Total masa: <strong id="ptb-tot">—</strong></div>
+      </div>
+    </div>
+
+    <!-- PAGOS -->
+    <div class="tab-panel" id="tab-pagos">
+      <div class="ph"><div><h2>Pagos</h2><p>Órdenes de pago y registro histórico</p></div><div class="ph-actions"><button class="btn btn-primary" onclick="showNuevoPago(null)">+ Nuevo Pago</button></div></div>
+      <div id="pag-hist">
+        <p style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);margin-bottom:10px">Historial</p>
+        <div class="pago-list" id="lp-list"></div>
+      </div>
+      <div id="pag-form" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <h3 style="font-size:14px;font-weight:600" id="pag-form-title">Nueva Orden de Pago</h3>
+          <button class="btn btn-ghost btn-sm" onclick="hidePagoForm()">← Historial</button>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <div class="fg-row" style="flex:1;min-width:180px"><label>Período *</label><input id="pp" type="text" placeholder="Ej: Marzo 2026"></div>
+          <div class="fg-row" style="flex:1;min-width:150px"><label>Filtrar por categoría</label>
+            <select id="pp-cat" onchange="filtrarPagoGrid()" class="fi" style="padding:8px 10px">
+              <option value="">Todas</option><option>Primera División</option><option>Reserva</option><option>4ta División</option><option>5ta División</option><option>6ta División</option><option>7ma División</option>
+            </select>
+          </div>
+          <div class="fg-row" style="flex:2;min-width:180px"><label>Observaciones</label><input id="po" type="text" placeholder="Opcional"></div>
+        </div>
+        <div style="border:1px solid var(--border)">
+          <div class="pago-grid-hd">
+            <span style="cursor:pointer;user-select:none" onclick="setSortPag('nombre')" id="pag-sort-nombre">Persona ▾</span>
+            <span style="cursor:pointer;user-select:none" onclick="setSortPag('rol')" id="pag-sort-rol">Rol ▾</span>
+            <span>Monto ($)</span>
+            <span>Medio de pago</span>
+            <span style="text-align:center">✓</span>
+          </div>
+          <div id="pgrid"></div>
+        </div>
+        <div class="pago-total-row"><span>Total a abonar:</span><strong id="ptot">$0</strong></div>
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;flex-wrap:wrap">
+          <button class="btn btn-secondary" onclick="exportXLS()">⬇ XLS</button>
+          <button class="btn btn-secondary" onclick="exportPDF()">⬇ PDF</button>
+          <button class="btn btn-danger btn-sm" id="pag-del-btn" onclick="eliminarPagoActual()" style="display:none;margin-right:auto">Eliminar</button>
+          <button class="btn btn-primary" id="pag-save-btn" onclick="guardarPago()">Registrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROYECCIÓN -->
+    <div class="tab-panel" id="tab-proyeccion">
+      <div class="ph"><div><h2>Proyección</h2><p>Simulá aumentos sobre el plantel activo</p></div></div>
+      <div class="proy-bar">
+        <label>Aumento:</label>
+        <input type="number" id="pct" value="30" min="-100" max="1000" oninput="calcProy()">
+        <span style="color:var(--txt3);font-size:12px">%</span>
+        <button class="btn btn-secondary btn-sm" onclick="calcProy()">Aplicar</button>
+        <button class="btn btn-ghost btn-sm" onclick="resetProy()">Restaurar</button>
+        <div style="display:flex;align-items:center;gap:6px;margin-left:8px">
+          <label>Categoría:</label>
+          <select class="fi" id="proy-cat" onchange="renderProy()" style="padding:5px 9px;font-size:11px">
+            <option value="">Todas</option><option>Primera División</option><option>Reserva</option><option>4ta División</option><option>5ta División</option><option>6ta División</option><option>7ma División</option><option>8va División</option><option>9na División</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <label>Rol:</label>
+          <select class="fi" id="proy-rol" onchange="renderProy()" style="padding:5px 9px;font-size:11px">
+            <option value="">Todos</option><option>Jugador</option><option>DT</option><option>Ayudante de Campo</option><option>PF</option><option>Médico</option><option>Utilero</option><option>Mantenimiento</option><option>Entrenador de Arqueros</option><option>Otro</option>
+          </select>
+        </div>
+        <div class="proy-sum"><span>Total proyectado:</span><strong id="proy-tot">$0</strong><span id="proy-diff" style="font-size:11px;color:var(--txt3);margin-left:4px"></span></div>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th class="sortable" onclick="setSortProy('nombre')">Nombre</th>
+            <th class="sortable" onclick="setSortProy('rol')">Rol</th>
+            <th class="sortable" onclick="setSortProy('categoria')">Categoría</th>
+            <th class="sortable" onclick="setSortProy('basico')">Básico actual</th>
+            <th>Bono actual</th>
+            <th class="sortable" onclick="setSortProy('total')">Total actual</th>
+            <th>Básico nuevo</th><th>Bono nuevo</th>
+            <th class="sortable" onclick="setSortProy('totalNuevo')">Total nuevo</th>
+            <th class="sortable" onclick="setSortProy('delta')">Δ%</th>
+          </tr></thead>
+          <tbody id="tb-proy"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:10px;display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="exportProyXLS()">⬇ XLS</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportProyPDF()">⬇ PDF</button>
+      </div>
+    </div>
+
+    <!-- BAJAS -->
+    <div class="tab-panel" id="tab-bajas">
+      <div class="ph"><div><h2>Bajas</h2><p>Personal desvinculado del club</p></div></div>
+      <div class="tw"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Categoría</th><th>Fecha Baja</th><th>Motivo</th><th>Acciones</th></tr></thead><tbody id="tb-b"></tbody></table></div>
+    </div>
+
+    <!-- IMPORTAR -->
+    <div class="tab-panel" id="tab-importar">
+      <div class="ph"><div><h2>Importar Personal</h2><p>Carga masiva desde archivo Excel (.xlsx)</p></div><div class="ph-actions"><button class="btn btn-ghost" onclick="dlTemplate()">⬇ Plantilla Excel</button></div></div>
+      <div style="max-width:560px">
+        <div class="drop-zone" id="dz" onclick="document.getElementById('fi-import').click()">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#C8102E" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+          <strong>Arrastrá o hacé click para subir</strong>
+          <p>Archivos .xlsx — usá la plantilla descargable</p>
+          <input type="file" id="fi-import" accept=".xlsx" style="display:none" onchange="handleImport(this)">
+        </div>
+        <div id="imp-prev" style="margin-top:14px;display:none">
+          <p style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);margin-bottom:8px">Vista previa — <span id="imp-n">0</span> registros</p>
+          <div class="tw" style="max-height:260px;overflow-y:auto"><table><thead><tr id="imp-th"></tr></thead><tbody id="imp-tb"></tbody></table></div>
+          <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">
+            <button class="btn btn-ghost" onclick="cancelImport()">Cancelar</button>
+            <button class="btn btn-primary" onclick="confirmImport()">Confirmar Importación</button>
+          </div>
+        </div>
+        <div style="margin-top:18px;background:var(--bg1);border:1px solid var(--border);padding:14px">
+          <p style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt3);margin-bottom:8px">Columnas del template</p>
+          <div class="cols-list" id="cols-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BALANCE -->
+    <div class="tab-panel" id="tab-balance">
+      <div class="ph">
+        <div><h2>Balance</h2><p>Análisis de masa salarial por tipo de facturación</p></div>
+        <div class="ph-actions"><button class="btn btn-ghost btn-sm" onclick="renderBalance()">↺ Actualizar</button></div>
+      </div>
+      <div class="stats" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
+        <div class="sc accent"><div class="lbl">Masa Total</div><div class="val" id="bal-total">—</div><div class="sub">todas las funciones activas</div></div>
+        <div class="sc" style="border-left:3px solid var(--amber)"><div class="lbl">Con Factura</div><div class="val" id="bal-fac">—</div><div class="sub" id="bal-fac-pct">—</div></div>
+        <div class="sc" style="border-left:3px solid var(--txt3)"><div class="lbl">Sin Factura</div><div class="val" id="bal-nofac">—</div><div class="sub" id="bal-nofac-pct">—</div></div>
+        <div class="sc"><div class="lbl">Funciones Con Factura</div><div class="val" id="bal-fac-n">—</div></div>
+        <div class="sc"><div class="lbl">Funciones Sin Factura</div><div class="val" id="bal-nofac-n">—</div></div>
+        <div class="sc"><div class="lbl">Personas Mixtas</div><div class="val" id="bal-mixtas-n">—</div><div class="sub">cobran de ambas formas</div></div>
+      </div>
+      <!-- Barra proporcional -->
+      <div style="margin-bottom:20px;background:var(--bg1);border:1px solid var(--border);padding:18px">
+        <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt3);margin-bottom:10px">Distribución de masa salarial</div>
+        <div style="display:flex;height:28px;overflow:hidden;gap:2px;margin-bottom:8px">
+          <div id="bal-bar-fac" style="background:var(--amber);height:100%;transition:width .5s ease;display:flex;align-items:center;justify-content:center;min-width:0">
+            <span id="bal-bar-fac-lbl" style="font-size:10px;font-weight:700;color:#000;white-space:nowrap;padding:0 8px"></span>
+          </div>
+          <div id="bal-bar-nofac" style="background:var(--bg3);border:1px solid var(--border2);height:100%;flex:1;display:flex;align-items:center;justify-content:center;min-width:0">
+            <span id="bal-bar-nofac-lbl" style="font-size:10px;color:var(--txt3);white-space:nowrap;padding:0 8px"></span>
+          </div>
+        </div>
+        <div style="display:flex;gap:16px">
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3)"><div style="width:10px;height:10px;background:var(--amber);flex-shrink:0"></div>Con factura</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3)"><div style="width:10px;height:10px;background:var(--bg3);border:1px solid var(--border2);flex-shrink:0"></div>Sin factura</div>
+        </div>
+      </div>
+      <!-- Charts por rol y categoría -->
+      <div class="charts">
+        <div class="cb"><h4>Por Rol — Con Factura</h4><div class="bar-chart" id="bal-rol-fac"></div></div>
+        <div class="cb"><h4>Por Rol — Sin Factura</h4><div class="bar-chart" id="bal-rol-nofac"></div></div>
+        <div class="cb"><h4>Por Categoría — Con Factura</h4><div class="bar-chart" id="bal-cat-fac"></div></div>
+        <div class="cb"><h4>Por Categoría — Sin Factura</h4><div class="bar-chart" id="bal-cat-nofac"></div></div>
+      </div>
+      <!-- Tabla personas mixtas -->
+      <div id="bal-mixtas-section" style="margin-top:20px;display:none">
+        <p style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--amber);margin-bottom:10px">⚠ Personas con facturación mixta</p>
+        <div class="tw">
+          <table>
+            <thead><tr><th>Nombre</th><th>Roles</th><th>Categorías</th><th>Factura</th><th>Básico</th><th>Bono</th><th>Total función</th></tr></thead>
+            <tbody id="bal-mixtas-tb"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL PERSONA -->
+<div class="mo-overlay" id="mo-persona">
+  <div class="mo">
+    <div class="mo-hd"><h3 id="mo-p-title">Nueva Persona</h3><span class="mo-x" onclick="closeMoPersona()">×</span></div>
+    <div class="mo-bd">
+      <input type="hidden" id="p-id">
+      <div class="fs">Identificación</div>
+      <div class="fg">
+        <div class="fg-row ff"><label>Nombre completo *</label><input id="p-nombre" type="text"></div>
+        <div class="fg-row"><label>DNI</label><input id="p-dni" type="text"></div>
+        <div class="fg-row"><label>Fecha de nacimiento</label><input id="p-fnac" type="text" placeholder="dd/mm/aaaa"></div>
+        <div class="fg-row"><label>Procedencia</label><input id="p-proc" type="text"></div>
+      </div>
+      <div class="fs">Contacto</div>
+      <div class="fg">
+        <div class="fg-row"><label>Teléfono</label><input id="p-tel" type="text"></div>
+        <div class="fg-row"><label>Dirección</label><input id="p-dir" type="text"></div>
+        <div class="fg-row"><label>Contacto emergencia</label><input id="p-en" type="text"></div>
+        <div class="fg-row"><label>Tel. emergencia</label><input id="p-et" type="text"></div>
+      </div>
+      <div class="fs">Rol y Remuneración</div>
+      <div class="fg fg3">
+        <div class="fg-row ff"><label>Roles *</label>
+          <div class="ms-modal-wrap" onclick="focusMsModal('p-roles')">
+            <div class="ms-modal-chips" id="chips-p-roles"></div>
+            <div class="ms-modal-opts" id="opts-p-roles"></div>
+          </div>
+        </div>
+        <div class="fg-row ff"><label>Categorías (División)</label>
+          <div class="ms-modal-wrap" onclick="focusMsModal('p-cats')">
+            <div class="ms-modal-chips" id="chips-p-cats"></div>
+            <div class="ms-modal-opts" id="opts-p-cats"></div>
+          </div>
+        </div>
+        <div class="fg-row"><label>Escalafón</label>
+          <select id="p-esc"><option value="">Sin escalafón</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
+        </div>
+        <div class="fg-row"><label>Estado</label><select id="p-est"><option>Activo</option><option>Baja</option></select></div>
+        <div class="fg-row"><label>Factura</label>
+          <select id="p-factura">
+            <option value="No">Sin factura</option>
+            <option value="Si">Con factura</option>
+          </select>
+        </div>
+        <div class="fg-row"><label>Básico ($)</label><input id="p-bas" type="number" min="0" placeholder="0"></div>
+        <div class="fg-row"><label>Bono ($)</label><input id="p-bon" type="number" min="0" placeholder="0"></div>
+      </div>
+      <div class="fs">Datos Bancarios</div>
+      <div class="fg">
+        <div class="fg-row"><label>CUIT</label><input id="p-cuit" type="text"></div>
+        <div class="fg-row"><label>Banco</label><input id="p-banco" type="text"></div>
+        <div class="fg-row"><label>CBU</label><input id="p-cbu" type="text"></div>
+        <div class="fg-row"><label>Alias</label><input id="p-alias" type="text"></div>
+      </div>
+      <div class="fs">Notas</div>
+      <div class="fg"><div class="fg-row ff"><label>Observaciones internas</label><textarea id="p-notas"></textarea></div></div>
+    </div>
+    <div class="mo-ft"><button class="btn btn-ghost" onclick="closeMoPersona()">Cancelar</button><button class="btn btn-primary" onclick="savePersona()">Guardar</button></div>
+  </div>
+</div>
+
+<!-- MODAL FICHA -->
+<div class="mo-overlay" id="mo-ficha">
+  <div class="mo" style="max-width:700px">
+    <div class="mo-hd"><h3 id="ficha-title"></h3><span class="mo-x" onclick="closeFicha()">×</span></div>
+    <div class="mo-bd" id="ficha-body"></div>
+    <div class="mo-ft">
+      <button class="btn btn-danger btn-sm" id="ficha-baja-btn" onclick="startBaja()">Dar de Baja</button>
+      <button class="btn btn-secondary btn-sm" onclick="editFromFicha()">Editar</button>
+      <button class="btn btn-ghost" onclick="closeFicha()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BAJA -->
+<div class="mo-overlay" id="mo-baja">
+  <div class="mo" style="max-width:400px">
+    <div class="mo-hd"><h3>Confirmar Baja</h3><span class="mo-x" onclick="document.getElementById('mo-baja').classList.remove('open')">×</span></div>
+    <div class="mo-bd">
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:12px">El registro pasará a la pestaña Bajas.</p>
+      <div class="fg-row"><label>Motivo</label><textarea id="baja-mot" style="min-height:70px;width:100%;padding:8px 10px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);font-family:var(--sans);font-size:12px;outline:none;resize:vertical"></textarea></div>
+    </div>
+    <div class="mo-ft">
+      <button class="btn btn-ghost" onclick="document.getElementById('mo-baja').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarBaja()">Confirmar Baja</button>
+    </div>
+  </div>
+</div>
+
+
 <script type="module">
+
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, addDoc, query, orderBy, Timestamp, writeBatch, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
@@ -36,6 +724,21 @@ const ROLES    = ['Jugador','DT','Ayudante de Campo','PF','Médico','Utilero','M
 const CATS_DIV = ['Primera División','Reserva','4ta División','5ta División','6ta División','7ma División','8va División','9na División','Infantiles 2013','Infantiles 2014','Infantiles 2015','Infantiles 2016'];
 const ESCALAFONES = ['A','B','C','D'];
 const TEMPLATE_COLS = ['id','nombre','dni','fechaNac','tel','direccion','procedencia','cuit','banco','cbu','alias','emergNombre','emergTel','rol','categoria','basico','bono','estado','notas','escalafon'];
+
+// ══════════════════════════════════════════
+// UTILS — definidas primero para estar disponibles en todo el módulo
+// ══════════════════════════════════════════
+function f(n)  { return '$'+Math.round(n||0).toLocaleString('es-AR'); }
+function x(s)  { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function st(id,v){ const e=document.getElementById(id); if(e) e.textContent=v; }
+function load(s){ document.getElementById('lov').classList.toggle('show',s); }
+function toast(msg,err){
+  const e=document.getElementById('toast');
+  e.textContent=msg; e.className='toast show '+(err?'er':'ok');
+  clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove('show'),3200);
+}
+function autoId(){ return 'BFC'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,5).toUpperCase(); }
+
 
 // ══════════════════════════════════════════
 // ══════════════════════════════════════════
@@ -1328,24 +2031,12 @@ function renderBalance() {
 }
 window.renderBalance = renderBalance;
 
-// ══════════════════════════════════════════
-// UTILS
-// ══════════════════════════════════════════
-function f(n)  { return '$'+Math.round(n||0).toLocaleString('es-AR'); }
-function x(s)  { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function st(id,v){ const e=document.getElementById(id); if(e) e.textContent=v; }
-function load(s){ document.getElementById('lov').classList.toggle('show',s); }
-function toast(msg,err){
-  const e=document.getElementById('toast');
-  e.textContent=msg; e.className='toast show '+(err?'er':'ok');
-  clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove('show'),3200);
-}
-function autoId(){ return 'BFC'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,5).toUpperCase(); }
+
 
 // ══════════════════════════════════════════
-// INIT DOM — todo lo que toca el DOM al cargar
+// INIT — script está al final del body, DOM ya existe
 // ══════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
+
   // Auth
   onAuthStateChanged(auth, user => {
     if (user) {
@@ -1386,692 +2077,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Cols list
   document.getElementById('cols-list').innerHTML = TEMPLATE_COLS.map(c=>`<code>${c}</code>`).join('');
-});
+
+
 </script>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --red:#C8102E;--red-dk:#9b0d22;
-  --bg:#0f0f0f;--bg1:#161616;--bg2:#1e1e1e;--bg3:#2a2a2a;
-  --border:#2a2a2a;--border2:#3d3d3d;
-  --txt:#f0f0f0;--txt2:#c0c0c0;--txt3:#707070;
-  --green:#22c55e;--amber:#f59e0b;
-  --mono:'JetBrains Mono','Consolas',monospace;
-  --sans:'Inter','DM Sans',system-ui,sans-serif;
-}
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=DM+Serif+Display&display=swap');
-body{font-family:var(--sans);background:var(--bg);color:var(--txt);min-height:100vh;font-size:15px;-webkit-font-smoothing:antialiased;font-weight:400}
-#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);background-image:radial-gradient(ellipse 600px 400px at 15% 60%,rgba(200,16,46,.07) 0%,transparent 70%),radial-gradient(ellipse 400px 300px at 85% 20%,rgba(200,16,46,.04) 0%,transparent 70%)}
-.login-box{width:320px;background:var(--bg1);border:1px solid var(--border2)}
-.login-top{padding:32px 28px 24px;border-bottom:1px solid var(--border)}
-.login-shield{display:flex;align-items:center;gap:14px;margin-bottom:24px}
-.login-shield svg{flex-shrink:0;filter:drop-shadow(0 2px 8px rgba(200,16,46,.3))}
-.login-brand h1{font-family:'DM Serif Display',serif;font-size:20px;font-weight:400;color:var(--txt);line-height:1.2}
-.login-brand span{font-size:10px;color:var(--txt3);letter-spacing:2px;text-transform:uppercase}
-.login-field{margin-bottom:12px}
-.login-field label{display:block;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--txt3);margin-bottom:5px}
-.login-field input{width:100%;padding:9px 11px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);font-family:var(--mono);font-size:13px;outline:none;transition:border .15s}
-.login-field input:focus{border-color:var(--red)}
-.login-bottom{padding:16px 28px 20px}
-.login-btn{width:100%;padding:10px;background:var(--red);border:none;color:#fff;font-family:var(--sans);font-weight:500;font-size:13px;cursor:pointer;transition:background .15s}
-.login-btn:hover{background:var(--red-dk)}
-.login-err{font-size:11px;color:var(--red);margin-top:8px;min-height:16px;text-align:center}
-#app{display:none;flex-direction:column;min-height:100vh}
-.topbar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:var(--bg1);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;flex-shrink:0}
-.topbar-l{display:flex;align-items:center;gap:14px}
-.topbar-logo{display:flex;align-items:center;gap:9px}
-.topbar-logo span{font-family:'DM Serif Display',serif;font-size:16px;color:var(--txt)}
-.topbar-r{display:flex;align-items:center;gap:12px}
-.topbar-user{font-size:11px;color:var(--txt3)}
-.topbar-out{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);cursor:pointer;padding:3px 8px;border:1px solid var(--border);transition:all .15s}
-.topbar-out:hover{color:var(--red);border-color:var(--red)}
-.nav{display:flex;padding:0 20px;background:var(--bg1);border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0}
-.nav-item{padding:10px 16px;cursor:pointer;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--txt3);border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s;user-select:none}
-.nav-item:hover{color:var(--txt2)}
-.nav-item.active{color:var(--red);border-bottom-color:var(--red)}
-.main{flex:1;padding:22px 24px;max-width:1400px;width:100%;margin:0 auto}
-.tab-panel{display:none}.tab-panel.active{display:block}
-.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
-.ph h2{font-size:18px;font-weight:600}.ph p{font-size:11px;color:var(--txt3);margin-top:3px}
-.ph-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.btn{padding:8px 16px;font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;border:none;font-family:var(--sans);transition:all .15s;display:inline-flex;align-items:center;gap:5px}
-.btn-primary{background:var(--red);color:#fff}.btn-primary:hover{background:var(--red-dk)}
-.btn-secondary{background:var(--bg3);color:var(--txt2);border:1px solid var(--border2)}.btn-secondary:hover{color:var(--txt);border-color:var(--txt3)}
-.btn-ghost{background:transparent;color:var(--txt3);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--border2);color:var(--txt2)}
-.btn-danger{background:transparent;color:var(--red);border:1px solid rgba(200,16,46,.4)}.btn-danger:hover{background:var(--red);color:#fff}
-.btn-sm{padding:5px 10px;font-size:10px}
-.filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
-.fi{padding:8px 11px;background:var(--bg2);border:1px solid var(--border);color:var(--txt);font-family:var(--sans);font-size:12px;outline:none;transition:border .15s}
-.fi:focus{border-color:var(--red)}.fi-search{min-width:200px}
-
-/* MULTI-SELECT CHIPS */
-.ms-wrap{position:relative;display:inline-block}
-.ms-btn{display:flex;align-items:center;gap:6px;padding:7px 11px;background:var(--bg2);border:1px solid var(--border);color:var(--txt2);font-family:var(--sans);font-size:12px;cursor:pointer;user-select:none;min-width:140px;transition:border .15s}
-.ms-btn:hover,.ms-btn.open{border-color:var(--border2)}
-.ms-btn.active{border-color:var(--red);color:var(--txt)}
-.ms-btn .ms-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ms-btn .ms-arrow{font-size:9px;color:var(--txt3);flex-shrink:0;transition:transform .15s}
-.ms-btn.open .ms-arrow{transform:rotate(180deg)}
-.ms-dropdown{display:none;position:absolute;top:calc(100% + 3px);left:0;min-width:100%;background:var(--bg1);border:1px solid var(--border2);z-index:500;box-shadow:0 8px 24px rgba(0,0,0,.4);max-height:260px;overflow-y:auto}
-.ms-dropdown.open{display:block}
-.ms-item{display:flex;align-items:center;gap:9px;padding:8px 12px;cursor:pointer;font-size:12px;color:var(--txt2);transition:background .1s;white-space:nowrap}
-.ms-item:hover{background:var(--bg2)}
-.ms-item.checked{color:var(--txt)}
-.ms-item input[type=checkbox]{width:13px;height:13px;accent-color:var(--red);flex-shrink:0;cursor:pointer}
-.ms-clear{display:flex;align-items:center;justify-content:center;padding:7px;border-top:1px solid var(--border);cursor:pointer;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--txt3);transition:color .15s}
-.ms-clear:hover{color:var(--red)}
-/* chips en el filtro */
-.ms-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
-.ms-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;background:var(--red-lt,rgba(200,16,46,.12));border:1px solid rgba(200,16,46,.25);color:var(--red);font-size:10px;font-weight:600;letter-spacing:.3px}
-.ms-chip button{background:none;border:none;color:inherit;cursor:pointer;padding:0;font-size:12px;line-height:1;opacity:.7}
-.ms-chip button:hover{opacity:1}
-.tw{overflow-x:auto;border:1px solid var(--border)}
-table{width:100%;border-collapse:collapse;font-size:12px}
-thead tr{background:var(--bg2);border-bottom:1px solid var(--border2)}
-thead th{padding:9px 13px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);white-space:nowrap}
-thead th.sortable{cursor:pointer;user-select:none;transition:color .15s}
-thead th.sortable:hover{color:var(--txt2)}
-thead th.sort-asc::after{content:' ↑';color:var(--red)}
-thead th.sort-desc::after{content:' ↓';color:var(--red)}
-tbody tr{border-bottom:1px solid var(--border);transition:background .1s;cursor:pointer}
-tbody tr:last-child{border-bottom:none}
-tbody tr:hover{background:var(--bg2)}
-tbody td{padding:9px 13px;color:var(--txt2);white-space:nowrap;font-size:13px}
-td.nm{color:var(--txt);font-weight:600}
-td.mo{font-family:var(--mono);font-size:12px;color:var(--txt2)}
-td.mo-total{font-family:var(--mono);font-size:13px;color:var(--txt);font-weight:700}
-.empty{text-align:center;padding:40px;color:var(--txt3);font-size:12px;cursor:default!important}
-.empty:hover{background:transparent!important}
-tr.group-hd td{background:var(--bg2);color:var(--txt2);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:7px 13px;cursor:default!important;border-bottom:1px solid var(--border2)}
-tr.group-hd:hover{background:var(--bg2)!important}
-.badge{display:inline-block;padding:2px 7px;font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase}
-.ba{background:rgba(200,16,46,.15);color:#e84060}.bb{background:rgba(245,158,11,.12);color:var(--amber)}
-.bc{background:rgba(34,197,94,.1);color:var(--green)}.bd{background:rgba(148,163,184,.1);color:#94a3b8}
-.bactivo{background:rgba(34,197,94,.1);color:var(--green)}.bbaja{background:rgba(200,16,46,.1);color:#e84060}
-.total-bar{display:flex;align-items:center;gap:20px;padding:10px 14px;background:var(--bg1);border:1px solid var(--border);border-top:none;flex-wrap:wrap}
-.total-bar-item{font-size:11px;color:var(--txt3)}.total-bar-item strong{font-family:var(--mono);color:var(--txt);margin-left:4px}
-.total-bar-item.accent strong{color:var(--green)}
-.mo-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:36px 16px}
-.mo-overlay.open{display:flex}
-.mo{background:var(--bg1);border:1px solid var(--border2);width:100%;max-width:660px;animation:moIn .18s ease}
-@keyframes moIn{from{transform:translateY(-10px);opacity:0}to{transform:translateY(0);opacity:1}}
-.mo-hd{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.mo-hd h3{font-size:14px;font-weight:600}.mo-x{cursor:pointer;color:var(--txt3);font-size:22px;line-height:1;padding:0 4px}.mo-x:hover{color:var(--txt)}
-.mo-bd{padding:20px}.mo-ft{padding:13px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
-.fg{display:grid;grid-template-columns:1fr 1fr;gap:13px}.fg3{grid-template-columns:1fr 1fr 1fr}.ff{grid-column:1/-1}
-.fg label{display:block;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);margin-bottom:5px}
-.fg input,.fg select,.fg textarea{width:100%;padding:8px 10px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);font-family:var(--sans);font-size:12px;outline:none;transition:border .15s}
-.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--red)}.fg textarea{resize:vertical;min-height:64px}
-.fs{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--red);margin:16px 0 8px;border-bottom:1px solid var(--border);padding-bottom:5px}.fs:first-child{margin-top:0}
-.fg-row{display:flex;flex-direction:column;gap:5px}.fg-row label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3)}
-.fg-row input,.fg-row select,.fg-row textarea{padding:8px 10px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);font-family:var(--sans);font-size:12px;outline:none;transition:border .15s;width:100%}
-.fg-row input:focus,.fg-row select:focus{border-color:var(--red)}
-/* multi-select en modal */
-.ms-modal-wrap{border:1px solid var(--border2);background:var(--bg2);padding:6px 8px;min-height:38px;cursor:text}
-.ms-modal-chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
-.ms-modal-chip{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:var(--bg3);border:1px solid var(--border2);color:var(--txt2);font-size:10px}
-.ms-modal-chip button{background:none;border:none;color:var(--txt3);cursor:pointer;padding:0;font-size:12px;line-height:1}
-.ms-modal-chip button:hover{color:var(--red)}
-.ms-modal-opts{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
-.ms-modal-opt{padding:3px 9px;font-size:10px;font-weight:600;letter-spacing:.3px;cursor:pointer;border:1px solid var(--border2);color:var(--txt3);background:transparent;transition:all .15s;user-select:none}
-.ms-modal-opt:hover{border-color:var(--border2);color:var(--txt2)}
-.ms-modal-opt.sel{background:var(--red);border-color:var(--red);color:#fff}
-.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:20px}
-.sc{background:var(--bg1);border:1px solid var(--border);padding:16px 18px}.sc.accent{border-left:3px solid var(--red)}
-.sc .lbl{font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--txt3);margin-bottom:7px}
-.sc .val{font-size:24px;font-weight:300;font-family:var(--mono);color:var(--txt)}.sc .sub{font-size:10px;color:var(--txt3);margin-top:3px}
-.charts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
-.cb{background:var(--bg1);border:1px solid var(--border);padding:18px}
-.cb h4{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt3);margin-bottom:14px}
-.bar-chart{display:flex;flex-direction:column;gap:9px}.bar-row{display:flex;align-items:center;gap:10px}
-.bar-lbl{width:120px;font-size:11px;color:var(--txt2);text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bar-track{flex:1;height:5px;background:var(--bg3)}.bar-fill{height:100%;background:var(--red);transition:width .5s ease}
-.bar-v{width:90px;font-size:10px;font-family:var(--mono);color:var(--txt3);text-align:right;flex-shrink:0}
-.pago-list{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
-.pago-item{background:var(--bg1);border:1px solid var(--border);padding:11px 15px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
-.pago-item:hover{border-color:var(--border2)}.pago-periodo{font-weight:600;font-size:13px}
-.pago-fecha{font-size:10px;color:var(--txt3);margin-top:2px}.pago-monto{font-family:var(--mono);color:var(--green);font-size:14px}
-.pago-grid-hd{display:grid;grid-template-columns:2fr 1fr 120px 110px 50px;background:var(--bg2);border-bottom:1px solid var(--border2)}
-.pago-grid-hd span{padding:8px 11px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt3)}
-.pgr{display:grid;grid-template-columns:2fr 1fr 120px 110px 50px;border-bottom:1px solid var(--border);align-items:center}
-.pgr:last-child{border-bottom:none}.pgr span{padding:8px 11px;font-size:12px;color:var(--txt2)}
-.pgr input[type=number]{padding:7px 11px;background:transparent;border:none;border-left:1px solid var(--border);color:var(--txt);font-family:var(--mono);font-size:12px;outline:none;width:100%}
-.pgr input[type=number]:focus{background:var(--bg2)}
-.pgr-chk{display:flex;align-items:center;justify-content:center;border-left:1px solid var(--border);height:100%}
-.pgr-chk input{width:14px;height:14px;cursor:pointer;accent-color:var(--red)}
-.pago-total-row{display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);border-top:1px solid var(--border)}
-.pago-total-row span{font-size:11px;color:var(--txt3)}.pago-total-row strong{font-family:var(--mono);font-size:16px;color:var(--green)}
-.proy-bar{display:flex;gap:10px;align-items:center;background:var(--bg1);border:1px solid var(--border);padding:13px 16px;margin-bottom:18px;flex-wrap:wrap}
-.proy-bar label{font-size:11px;color:var(--txt3)}
-.proy-bar input{width:72px;padding:6px 9px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);font-family:var(--mono);font-size:13px;outline:none;text-align:center}
-.proy-bar input:focus{border-color:var(--red)}
-.proy-sum{margin-left:auto;display:flex;align-items:center;gap:6px}.proy-sum span{font-size:11px;color:var(--txt3)}
-.proy-sum strong{font-family:var(--mono);font-size:16px;color:var(--green)}
-.proy-delta-pos{color:var(--amber)}.proy-delta-neg{color:var(--green)}
-.drop-zone{border:2px dashed var(--border2);padding:28px;text-align:center;cursor:pointer;transition:border-color .2s;background:var(--bg1)}
-.drop-zone:hover,.drop-zone.drag{border-color:var(--red)}.drop-zone p{color:var(--txt3);font-size:12px;margin-top:7px}.drop-zone strong{color:var(--txt);font-size:14px}
-.cols-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.cols-list code{background:var(--bg2);border:1px solid var(--border);padding:2px 7px;font-size:10px;color:var(--txt2);font-family:var(--mono)}
-.ficha-g{display:grid;grid-template-columns:1fr 1fr;gap:0}.ficha-sec{padding:14px 0}
-.ficha-sec h4{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--red);margin-bottom:10px}
-.fr{display:flex;gap:8px;margin-bottom:7px;font-size:12px}.fk{color:var(--txt3);min-width:100px;flex-shrink:0;font-size:11px}.fv{color:var(--txt);font-family:var(--mono);font-size:11px;word-break:break-all}
-.toast{position:fixed;bottom:22px;right:22px;z-index:9999;background:var(--bg2);border:1px solid var(--border2);padding:11px 16px;font-size:12px;color:var(--txt);display:none;max-width:300px}
-.toast.show{display:block;animation:tin .2s ease}.toast.ok{border-left:3px solid var(--green)}.toast.er{border-left:3px solid var(--red)}
-@keyframes tin{from{transform:translateY(6px);opacity:0}to{transform:translateY(0);opacity:1}}
-.lov{display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.5);align-items:center;justify-content:center}
-.lov.show{display:flex}.sp{width:30px;height:30px;border:2px solid var(--border2);border-top-color:var(--red);border-radius:50%;animation:spin .65s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-@media(max-width:640px){.fg{grid-template-columns:1fr}.charts{grid-template-columns:1fr}.ficha-g{grid-template-columns:1fr}.pago-grid-hd,.pgr{grid-template-columns:2fr 120px 44px}.pago-grid-hd span:nth-child(2),.pgr span:nth-child(2){display:none}}
-</style>
-</head>
-<body>
-<div class="toast" id="toast"></div>
-<div class="lov" id="lov"><div class="sp"></div></div>
-
-<!-- LOGIN -->
-<div id="login-screen">
-  <div class="login-box">
-    <div class="login-top">
-      <div class="login-shield">
-        <svg width="56" height="56" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1092 1094"><g transform="translate(0,1094) scale(0.1,-0.1)" fill="#C8102E" fill-rule="evenodd"><path d="Mm5674 2590 l164 -70 816 0 816 0 -2 -422 -3 -423 -1933 -2 c-1063 -1
--1946 0 -1962 4 l-30 6 0 418 0 419 818 0 817 1 160 69 c88 38 164 69 168 69
-4 1 81 -30 171 -69z m1794 -2742 l-3 -1693 -28 -61 c-56 -120 -37 -108 -1237
--774 -96 -54 -290 -162 -430 -240 -140 -79 -260 -143 -265 -143 -6 0 -211 111
--455 248 -245 136 -638 356 -875 487 -236 132 -453 255 -482 274 -28 20 -68
-59 -87 87 -71 104 -66 -41 -66 1823 l0 1684 1965 0 1965 0 -2 -1692z"/><path d="M5345 7919 l-160 -68 -752 -1 -753 0 0 -280 0 -280 1825 0 1825 0 0
-280 0 280 -753 0 -754 0 -139 61 c-76 33 -148 64 -159 69 -15 5 -64 -11 -180
--61z m-1170 -240 c24 -23 34 -63 24 -94 -1 -5 3 -28 10 -51 11 -35 11 -45 -2
--71 -22 -41 -60 -54 -148 -51 l-74 3 -3 134 c-1 74 0 141 3 149 4 11 23 13 85
-10 70 -3 83 -6 105 -29z m347 -109 c26 -74 48 -141 48 -147 0 -8 -13 -13 -31
--13 -24 0 -32 6 -40 30 -10 28 -14 30 -63 30 -48 0 -52 -2 -63 -30 -9 -24 -17
--30 -42 -30 -17 0 -31 2 -31 5 0 5 83 248 95 278 6 14 16 17 43 15 l36 -3 48
--135z m311 129 c69 -19 87 -102 32 -153 l-24 -22 30 -50 c16 -27 29 -52 29
--56 0 -5 -15 -8 -34 -8 -31 0 -37 5 -65 55 -17 30 -38 55 -46 55 -11 0 -15
--13 -15 -55 0 -54 0 -55 -30 -55 l-30 0 0 150 0 150 58 0 c31 0 74 -5 95 -11z
-m346 0 c62 -22 80 -103 32 -148 l-28 -27 28 -49 c16 -28 29 -53 29 -57 0 -5
--15 -8 -34 -8 -31 0 -37 5 -63 52 -38 70 -51 72 -55 6 -3 -52 -4 -53 -35 -56
-l-33 -3 0 144 c0 79 3 147 7 150 10 11 117 8 152 -4z m328 -1 c9 -11 103 -271
-103 -284 0 -2 -15 -4 -34 -4 -29 0 -36 5 -45 30 -9 28 -13 30 -59 30 -46 0
--51 -2 -62 -30 -10 -24 -19 -30 -41 -30 -19 0 -29 5 -29 14 0 15 84 259 95
-277 9 13 61 11 72 -3z m355 -89 l53 -100 5 98 5 98 30 0 30 0 3 -148 3 -148
--48 3 -48 3 -57 105 -58 105 0 -108 0 -108 -32 3 -33 3 -3 134 c-1 74 0 141 2
-148 3 8 23 13 50 13 l45 0 53 -101z m468 86 c36 -18 37 -29 9 -49 -16 -11 -28
--12 -47 -5 -53 20 -112 -23 -112 -83 0 -64 60 -103 120 -78 26 11 33 10 50 -5
-26 -24 25 -28 -9 -48 -40 -24 -117 -22 -159 3 -35 22 -71 87 -72 131 0 41 42
-110 80 130 42 23 101 24 140 4z m297 3 c5 -7 29 -69 53 -138 23 -69 45 -131
-47 -137 4 -9 -6 -13 -30 -13 -30 0 -37 4 -46 30 -9 28 -13 30 -61 30 -48 0
--52 -2 -61 -30 -9 -25 -16 -30 -45 -30 l-33 0 45 132 c25 72 49 139 55 150 11
-21 61 25 76 6z m351 -4 c22 -15 23 -17 5 -36 -11 -13 -26 -18 -42 -15 -34 7
--51 -2 -51 -24 0 -12 10 -21 28 -25 79 -19 115 -68 92 -124 -7 -17 -22 -37
--34 -45 -28 -20 -106 -19 -135 2 l-24 16 23 19 c16 13 32 17 54 13 68 -12 75
-36 8 54 -44 12 -67 34 -77 72 -8 30 15 82 42 98 27 16 86 13 111 -5z"/><path d="M4050 7620 c0 -19 5 -21 43 -18 29 2 42 8 42 18 0 10 -13 16 -42 18
--38 3 -43 1 -43 -18z"/><path d="M4050 7505 c0 -25 2 -26 48 -23 39 3 47 6 47 23 0 17 -8 20 -47 23
--46 3 -48 2 -48 -23z"/><path d="M4423 7575 c-11 -34 -10 -35 14 -35 21 0 23 3 17 23 -14 46 -20 48
--31 12z"/><path d="M4740 7615 c0 -25 3 -26 43 -23 34 2 42 7 42 23 0 16 -8 21 -42 23
--40 3 -43 2 -43 -23z"/><path d="M5090 7616 c0 -24 4 -26 41 -26 36 0 40 2 37 23 -2 18 -10 23 -40 25
--35 3 -38 1 -38 -22z"/><path d="M5460 7586 c-15 -40 -13 -46 14 -46 24 0 24 2 14 33 -15 43 -16 44
--28 13z"/><path d="M6576 7578 c-9 -35 -8 -38 14 -38 11 0 20 3 20 8 0 19 -13 52 -20 52
--4 0 -10 -10 -14 -22z"/><path d="M3680 5263 c0 -1535 1 -1600 19 -1638 10 -22 34 -54 52 -71 19 -17
-194 -121 389 -229 195 -109 488 -272 650 -363 631 -352 703 -392 713 -392 11
-0 118 59 1112 614 656 366 678 381 703 464 9 29 12 435 12 1626 l0 1586 -1825
-0 -1825 0 0 -1597z m1060 1312 c62 -32 60 -11 60 -717 l0 -644 148 -82 c81
--45 206 -115 277 -155 l130 -73 0 -954 c0 -850 -2 -955 -15 -958 -9 -1 -173
-86 -365 194 -579 324 -603 338 -800 449 -104 59 -197 113 -205 121 -13 13 -15
-180 -15 1389 l0 1373 25 27 c14 15 34 31 45 35 11 5 170 9 353 9 279 1 338 -1
-362 -14z m2310 -130 l0 -145 -842 -2 -843 -3 -3 -132 -3 -133 843 -2 843 -3 3
--142 3 -143 -846 0 -845 0 -2 -278 -3 -279 -137 76 -138 76 0 582 c0 354 4
-592 10 607 5 14 24 35 42 46 32 20 51 20 976 20 l942 0 0 -145z m-34 -1019
-l34 -34 -2 -249 -3 -248 -140 0 -140 0 -5 140 -5 140 -404 3 c-290 1 -408 -1
--417 -9 -22 -18 -21 -1671 1 -1689 17 -14 -23 -34 490 254 l330 185 5 68 5 68
-143 3 142 3 0 -139 c0 -159 -2 -165 -83 -210 -243 -137 -1059 -594 -1162 -652
--96 -54 -133 -70 -145 -62 -13 8 -15 145 -18 1202 l-2 1192 34 34 34 34 637 0
-637 0 34 -34z"/><path d="M4247 6294 c-4 -4 -7 -177 -7 -385 l0 -378 134 -75 c74 -42 137 -76
-140 -76 3 0 5 206 4 458 l-3 457 -131 3 c-71 1 -133 -1 -137 -4z"/><path d="M4240 4563 l0 -639 38 -21 c20 -12 55 -31 77 -43 22 -12 188 -105
-368 -207 268 -150 331 -182 343 -172 12 10 14 100 12 633 l-3 621 -280 158
-c-288 162 -534 299 -547 305 -5 2 -8 -284 -8 -635z"/></g></svg>
-        <div class="login-brand"><h1>BFC Gestión</h1><span>Sistema Administrativo</span></div>
-      </div>
-      <div class="login-field"><label>Email</label><input type="email" id="lu" autocomplete="username" placeholder="email@ejemplo.com"></div>
-      <div class="login-field"><label>Contraseña</label><input type="password" id="lp" autocomplete="current-password" placeholder="••••••••"></div>
-    </div>
-    <div class="login-bottom">
-      <button class="login-btn" id="login-btn">Ingresar</button>
-      <div class="login-err" id="lerr"></div>
-    </div>
-  </div>
-</div>
-
-<!-- APP -->
-<div id="app">
-  <div class="topbar">
-    <div class="topbar-l">
-      <div class="topbar-logo">
-        <svg width="26" height="26" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1092 1094"><g transform="translate(0,1094) scale(0.1,-0.1)" fill="#C8102E" fill-rule="evenodd"><path d="Mm5674 2590 l164 -70 816 0 816 0 -2 -422 -3 -423 -1933 -2 c-1063 -1
--1946 0 -1962 4 l-30 6 0 418 0 419 818 0 817 1 160 69 c88 38 164 69 168 69
-4 1 81 -30 171 -69z m1794 -2742 l-3 -1693 -28 -61 c-56 -120 -37 -108 -1237
--774 -96 -54 -290 -162 -430 -240 -140 -79 -260 -143 -265 -143 -6 0 -211 111
--455 248 -245 136 -638 356 -875 487 -236 132 -453 255 -482 274 -28 20 -68
-59 -87 87 -71 104 -66 -41 -66 1823 l0 1684 1965 0 1965 0 -2 -1692z"/><path d="M5345 7919 l-160 -68 -752 -1 -753 0 0 -280 0 -280 1825 0 1825 0 0
-280 0 280 -753 0 -754 0 -139 61 c-76 33 -148 64 -159 69 -15 5 -64 -11 -180
--61z m-1170 -240 c24 -23 34 -63 24 -94 -1 -5 3 -28 10 -51 11 -35 11 -45 -2
--71 -22 -41 -60 -54 -148 -51 l-74 3 -3 134 c-1 74 0 141 3 149 4 11 23 13 85
-10 70 -3 83 -6 105 -29z m347 -109 c26 -74 48 -141 48 -147 0 -8 -13 -13 -31
--13 -24 0 -32 6 -40 30 -10 28 -14 30 -63 30 -48 0 -52 -2 -63 -30 -9 -24 -17
--30 -42 -30 -17 0 -31 2 -31 5 0 5 83 248 95 278 6 14 16 17 43 15 l36 -3 48
--135z m311 129 c69 -19 87 -102 32 -153 l-24 -22 30 -50 c16 -27 29 -52 29
--56 0 -5 -15 -8 -34 -8 -31 0 -37 5 -65 55 -17 30 -38 55 -46 55 -11 0 -15
--13 -15 -55 0 -54 0 -55 -30 -55 l-30 0 0 150 0 150 58 0 c31 0 74 -5 95 -11z
-m346 0 c62 -22 80 -103 32 -148 l-28 -27 28 -49 c16 -28 29 -53 29 -57 0 -5
--15 -8 -34 -8 -31 0 -37 5 -63 52 -38 70 -51 72 -55 6 -3 -52 -4 -53 -35 -56
-l-33 -3 0 144 c0 79 3 147 7 150 10 11 117 8 152 -4z m328 -1 c9 -11 103 -271
-103 -284 0 -2 -15 -4 -34 -4 -29 0 -36 5 -45 30 -9 28 -13 30 -59 30 -46 0
--51 -2 -62 -30 -10 -24 -19 -30 -41 -30 -19 0 -29 5 -29 14 0 15 84 259 95
-277 9 13 61 11 72 -3z m355 -89 l53 -100 5 98 5 98 30 0 30 0 3 -148 3 -148
--48 3 -48 3 -57 105 -58 105 0 -108 0 -108 -32 3 -33 3 -3 134 c-1 74 0 141 2
-148 3 8 23 13 50 13 l45 0 53 -101z m468 86 c36 -18 37 -29 9 -49 -16 -11 -28
--12 -47 -5 -53 20 -112 -23 -112 -83 0 -64 60 -103 120 -78 26 11 33 10 50 -5
-26 -24 25 -28 -9 -48 -40 -24 -117 -22 -159 3 -35 22 -71 87 -72 131 0 41 42
-110 80 130 42 23 101 24 140 4z m297 3 c5 -7 29 -69 53 -138 23 -69 45 -131
-47 -137 4 -9 -6 -13 -30 -13 -30 0 -37 4 -46 30 -9 28 -13 30 -61 30 -48 0
--52 -2 -61 -30 -9 -25 -16 -30 -45 -30 l-33 0 45 132 c25 72 49 139 55 150 11
-21 61 25 76 6z m351 -4 c22 -15 23 -17 5 -36 -11 -13 -26 -18 -42 -15 -34 7
--51 -2 -51 -24 0 -12 10 -21 28 -25 79 -19 115 -68 92 -124 -7 -17 -22 -37
--34 -45 -28 -20 -106 -19 -135 2 l-24 16 23 19 c16 13 32 17 54 13 68 -12 75
-36 8 54 -44 12 -67 34 -77 72 -8 30 15 82 42 98 27 16 86 13 111 -5z"/><path d="M4050 7620 c0 -19 5 -21 43 -18 29 2 42 8 42 18 0 10 -13 16 -42 18
--38 3 -43 1 -43 -18z"/><path d="M4050 7505 c0 -25 2 -26 48 -23 39 3 47 6 47 23 0 17 -8 20 -47 23
--46 3 -48 2 -48 -23z"/><path d="M4423 7575 c-11 -34 -10 -35 14 -35 21 0 23 3 17 23 -14 46 -20 48
--31 12z"/><path d="M4740 7615 c0 -25 3 -26 43 -23 34 2 42 7 42 23 0 16 -8 21 -42 23
--40 3 -43 2 -43 -23z"/><path d="M5090 7616 c0 -24 4 -26 41 -26 36 0 40 2 37 23 -2 18 -10 23 -40 25
--35 3 -38 1 -38 -22z"/><path d="M5460 7586 c-15 -40 -13 -46 14 -46 24 0 24 2 14 33 -15 43 -16 44
--28 13z"/><path d="M6576 7578 c-9 -35 -8 -38 14 -38 11 0 20 3 20 8 0 19 -13 52 -20 52
--4 0 -10 -10 -14 -22z"/><path d="M3680 5263 c0 -1535 1 -1600 19 -1638 10 -22 34 -54 52 -71 19 -17
-194 -121 389 -229 195 -109 488 -272 650 -363 631 -352 703 -392 713 -392 11
-0 118 59 1112 614 656 366 678 381 703 464 9 29 12 435 12 1626 l0 1586 -1825
-0 -1825 0 0 -1597z m1060 1312 c62 -32 60 -11 60 -717 l0 -644 148 -82 c81
--45 206 -115 277 -155 l130 -73 0 -954 c0 -850 -2 -955 -15 -958 -9 -1 -173
-86 -365 194 -579 324 -603 338 -800 449 -104 59 -197 113 -205 121 -13 13 -15
-180 -15 1389 l0 1373 25 27 c14 15 34 31 45 35 11 5 170 9 353 9 279 1 338 -1
-362 -14z m2310 -130 l0 -145 -842 -2 -843 -3 -3 -132 -3 -133 843 -2 843 -3 3
--142 3 -143 -846 0 -845 0 -2 -278 -3 -279 -137 76 -138 76 0 582 c0 354 4
-592 10 607 5 14 24 35 42 46 32 20 51 20 976 20 l942 0 0 -145z m-34 -1019
-l34 -34 -2 -249 -3 -248 -140 0 -140 0 -5 140 -5 140 -404 3 c-290 1 -408 -1
--417 -9 -22 -18 -21 -1671 1 -1689 17 -14 -23 -34 490 254 l330 185 5 68 5 68
-143 3 142 3 0 -139 c0 -159 -2 -165 -83 -210 -243 -137 -1059 -594 -1162 -652
--96 -54 -133 -70 -145 -62 -13 8 -15 145 -18 1202 l-2 1192 34 34 34 34 637 0
-637 0 34 -34z"/><path d="M4247 6294 c-4 -4 -7 -177 -7 -385 l0 -378 134 -75 c74 -42 137 -76
-140 -76 3 0 5 206 4 458 l-3 457 -131 3 c-71 1 -133 -1 -137 -4z"/><path d="M4240 4563 l0 -639 38 -21 c20 -12 55 -31 77 -43 22 -12 188 -105
-368 -207 268 -150 331 -182 343 -172 12 10 14 100 12 633 l-3 621 -280 158
-c-288 162 -534 299 -547 305 -5 2 -8 -284 -8 -635z"/></g></svg>
-        <span>Gestión</span>
-      </div>
-    </div>
-    <div class="topbar-r">
-      <span class="topbar-user" id="tu"></span>
-      <span class="topbar-out" onclick="logout()">Salir</span>
-    </div>
-  </div>
-  <div class="nav">
-    <div class="nav-item active" data-tab="dashboard">Dashboard</div>
-    <div class="nav-item" data-tab="personal">Personal</div>
-    <div class="nav-item" data-tab="pagos">Pagos</div>
-    <div class="nav-item" data-tab="proyeccion">Proyección</div>
-    <div class="nav-item" data-tab="balance">Balance</div>
-    <div class="nav-item" data-tab="bajas">Bajas</div>
-    <div class="nav-item" data-tab="importar">Importar</div>
-  </div>
-  <div class="main">
-
-    <!-- DASHBOARD -->
-    <div class="tab-panel active" id="tab-dashboard">
-      <div class="ph"><div><h2>Dashboard</h2><p>Resumen general del plantel y costos</p></div><div class="ph-actions"><button class="btn btn-ghost btn-sm" onclick="loadAll()">↺ Actualizar</button></div></div>
-      <div class="stats">
-        <div class="sc accent"><div class="lbl">Personal Activo</div><div class="val" id="d-tot">—</div></div>
-        <div class="sc"><div class="lbl">Jugadores</div><div class="val" id="d-jug">—</div></div>
-        <div class="sc"><div class="lbl">Cuerpo Técnico</div><div class="val" id="d-ct">—</div></div>
-        <div class="sc"><div class="lbl">Otros Roles</div><div class="val" id="d-otros">—</div></div>
-        <div class="sc accent"><div class="lbl">Masa Salarial</div><div class="val" id="d-masa">—</div><div class="sub">básico + bono / mes</div></div>
-        <div class="sc"><div class="lbl">Solo Básicos</div><div class="val" id="d-bas">—</div></div>
-        <div class="sc"><div class="lbl">Solo Bonos</div><div class="val" id="d-bon">—</div></div>
-        <div class="sc"><div class="lbl">Promedio Jugador</div><div class="val" id="d-prom">—</div></div>
-      </div>
-      <div class="charts">
-        <div class="cb"><h4>Costo por Rol</h4><div class="bar-chart" id="ch-rol"></div></div>
-        <div class="cb"><h4>Costo por Categoría</h4><div class="bar-chart" id="ch-cat"></div></div>
-      </div>
-    </div>
-
-    <!-- PERSONAL -->
-    <div class="tab-panel" id="tab-personal">
-      <div class="ph"><div><h2>Personal</h2><p>Jugadores, cuerpo técnico y staff</p></div><div class="ph-actions"><button class="btn btn-ghost btn-sm" onclick="loadPersonal()">↺</button><button class="btn btn-primary" onclick="openMoPersona()">+ Nuevo</button></div></div>
-      <div class="filters">
-        <input class="fi fi-search" id="fs" placeholder="Buscar nombre…" oninput="renderPersonal()">
-        <!-- Multi-select Rol -->
-        <div class="ms-wrap" id="ms-rol-wrap">
-          <div class="ms-btn" id="ms-rol-btn" onclick="toggleMs('rol')">
-            <span class="ms-label" id="ms-rol-label">Todos los roles</span>
-            <span class="ms-arrow">▼</span>
-          </div>
-          <div class="ms-dropdown" id="ms-rol-dd">
-            <div class="ms-item" onclick="toggleMsItem('rol','__CT__')"><input type="checkbox" id="ms-rol-__CT__"><label for="ms-rol-__CT__">— Cuerpo Técnico —</label></div>
-            <div class="ms-item" onclick="toggleMsItem('rol','Jugador')"><input type="checkbox" id="ms-rol-Jugador"><label for="ms-rol-Jugador">Jugador</label></div>
-            <div class="ms-item" onclick="toggleMsItem('rol','DT')"><input type="checkbox" id="ms-rol-DT"><label for="ms-rol-DT">DT</label></div>
-            <div class="ms-item" onclick="toggleMsItem('rol','Ayudante de Campo')"><input type="checkbox" id="ms-rol-AyudantedeCampo"><label for="ms-rol-AyudantedeCampo">Ayudante de Campo</label></div>
-            <div class="ms-item" onclick="toggleMsItem('rol','PF')"><input type="checkbox" id="ms-rol-PF"><label for="ms-rol-PF">PF</label></div>
-            <div class="ms-item" onclick="toggleMsItem('rol','Médico')"><input type="checkbox" id="ms-rol-Medico"><label for="ms-rol-Medico">Médico</label></div>
-            <div class="ms-item" onclick="toggleMsItem('rol','Utilero')"><input type="checkbox" id="ms-rol-Utilero"><label for="ms-rol-Utilero">Utilero</label></div>
-            <div class="ms-item" onclick="toggleMsItem('rol','Mantenimiento')"><input type="checkbox" id="ms-rol-Mantenimiento"><label for="ms-rol-Mantenimiento">Mantenimiento</label></div>
-            <div class="ms-item" onclick="toggleMsItem('rol','Entrenador de Arqueros')"><input type="checkbox" id="ms-rol-EntrenadordeArqueros"><label for="ms-rol-EntrenadordeArqueros">Entrenador de Arqueros</label></div>
-            <div class="ms-item" onclick="toggleMsItem('rol','Otro')"><input type="checkbox" id="ms-rol-Otro"><label for="ms-rol-Otro">Otro</label></div>
-            <div class="ms-clear" onclick="clearMs('rol')">✕ Limpiar</div>
-          </div>
-        </div>
-        <!-- Multi-select Categoría -->
-        <div class="ms-wrap" id="ms-cat-wrap">
-          <div class="ms-btn" id="ms-cat-btn" onclick="toggleMs('cat')">
-            <span class="ms-label" id="ms-cat-label">Todas las categorías</span>
-            <span class="ms-arrow">▼</span>
-          </div>
-          <div class="ms-dropdown" id="ms-cat-dd">
-            <div class="ms-item" onclick="toggleMsItem('cat','Primera División')"><input type="checkbox" id="ms-cat-PrimeraDivision"><label for="ms-cat-PrimeraDivision">Primera División</label></div>
-            <div class="ms-item" onclick="toggleMsItem('cat','Reserva')"><input type="checkbox" id="ms-cat-Reserva"><label for="ms-cat-Reserva">Reserva</label></div>
-            <div class="ms-item" onclick="toggleMsItem('cat','4ta División')"><input type="checkbox" id="ms-cat-4ta"><label for="ms-cat-4ta">4ta División</label></div>
-            <div class="ms-item" onclick="toggleMsItem('cat','5ta División')"><input type="checkbox" id="ms-cat-5ta"><label for="ms-cat-5ta">5ta División</label></div>
-            <div class="ms-item" onclick="toggleMsItem('cat','6ta División')"><input type="checkbox" id="ms-cat-6ta"><label for="ms-cat-6ta">6ta División</label></div>
-            <div class="ms-item" onclick="toggleMsItem('cat','7ma División')"><input type="checkbox" id="ms-cat-7ma"><label for="ms-cat-7ma">7ma División</label></div>
-            <div class="ms-item" onclick="toggleMsItem('cat','8va División')"><input type="checkbox" id="ms-cat-8va"><label for="ms-cat-8va">8va División</label></div>
-            <div class="ms-item" onclick="toggleMsItem('cat','9na División')"><input type="checkbox" id="ms-cat-9na"><label for="ms-cat-9na">9na División</label></div>
-            <div class="ms-item" onclick="toggleMsItem('cat','Infantiles 2013')"><input type="checkbox" id="ms-cat-2013"><label for="ms-cat-2013">Infantiles 2013</label></div>
-            <div class="ms-item" onclick="toggleMsItem('cat','Infantiles 2014')"><input type="checkbox" id="ms-cat-2014"><label for="ms-cat-2014">Infantiles 2014</label></div>
-            <div class="ms-item" onclick="toggleMsItem('cat','Infantiles 2015')"><input type="checkbox" id="ms-cat-2015"><label for="ms-cat-2015">Infantiles 2015</label></div>
-            <div class="ms-item" onclick="toggleMsItem('cat','Infantiles 2016')"><input type="checkbox" id="ms-cat-2016"><label for="ms-cat-2016">Infantiles 2016</label></div>
-            <div class="ms-clear" onclick="clearMs('cat')">✕ Limpiar</div>
-          </div>
-        </div>
-        <select class="fi" id="fesc" onchange="renderPersonal()"><option value="">Todos los escalafones</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
-        <select class="fi" id="fe" onchange="renderPersonal()"><option value="Activo">Activos</option><option value="">Todos</option></select>
-      </div>
-      <!-- chips activos -->
-      <div id="ms-chips-container" style="display:none;margin-bottom:10px"></div>
-      <div class="tw">
-        <table>
-          <thead><tr>
-            <th class="sortable" onclick="setSortP('nombre')">Nombre</th>
-            <th class="sortable" onclick="setSortP('rol')">Rol</th>
-            <th class="sortable" onclick="setSortP('categoria')">Categoría</th>
-            <th class="sortable" onclick="setSortP('escalafon')">Escal.</th>
-            <th>Fac.</th>
-            <th class="sortable" onclick="setSortP('basico')">Básico</th>
-            <th class="sortable" onclick="setSortP('bono')">Bono</th>
-            <th class="sortable" onclick="setSortP('total')">Total</th>
-            <th>Estado</th><th>Acciones</th>
-          </tr></thead>
-          <tbody id="tb-p"></tbody>
-        </table>
-      </div>
-      <div class="total-bar">
-        <div class="total-bar-item">Personas: <strong id="ptb-count">—</strong></div>
-        <div class="total-bar-item">Básicos: <strong id="ptb-bas">—</strong></div>
-        <div class="total-bar-item">Bonos: <strong id="ptb-bon">—</strong></div>
-        <div class="total-bar-item accent">Total masa: <strong id="ptb-tot">—</strong></div>
-      </div>
-    </div>
-
-    <!-- PAGOS -->
-    <div class="tab-panel" id="tab-pagos">
-      <div class="ph"><div><h2>Pagos</h2><p>Órdenes de pago y registro histórico</p></div><div class="ph-actions"><button class="btn btn-primary" onclick="showNuevoPago(null)">+ Nuevo Pago</button></div></div>
-      <div id="pag-hist">
-        <p style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);margin-bottom:10px">Historial</p>
-        <div class="pago-list" id="lp-list"></div>
-      </div>
-      <div id="pag-form" style="display:none">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <h3 style="font-size:14px;font-weight:600" id="pag-form-title">Nueva Orden de Pago</h3>
-          <button class="btn btn-ghost btn-sm" onclick="hidePagoForm()">← Historial</button>
-        </div>
-        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-          <div class="fg-row" style="flex:1;min-width:180px"><label>Período *</label><input id="pp" type="text" placeholder="Ej: Marzo 2026"></div>
-          <div class="fg-row" style="flex:1;min-width:150px"><label>Filtrar por categoría</label>
-            <select id="pp-cat" onchange="filtrarPagoGrid()" class="fi" style="padding:8px 10px">
-              <option value="">Todas</option><option>Primera División</option><option>Reserva</option><option>4ta División</option><option>5ta División</option><option>6ta División</option><option>7ma División</option>
-            </select>
-          </div>
-          <div class="fg-row" style="flex:2;min-width:180px"><label>Observaciones</label><input id="po" type="text" placeholder="Opcional"></div>
-        </div>
-        <div style="border:1px solid var(--border)">
-          <div class="pago-grid-hd">
-            <span style="cursor:pointer;user-select:none" onclick="setSortPag('nombre')" id="pag-sort-nombre">Persona ▾</span>
-            <span style="cursor:pointer;user-select:none" onclick="setSortPag('rol')" id="pag-sort-rol">Rol ▾</span>
-            <span>Monto ($)</span>
-            <span>Medio de pago</span>
-            <span style="text-align:center">✓</span>
-          </div>
-          <div id="pgrid"></div>
-        </div>
-        <div class="pago-total-row"><span>Total a abonar:</span><strong id="ptot">$0</strong></div>
-        <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;flex-wrap:wrap">
-          <button class="btn btn-secondary" onclick="exportXLS()">⬇ XLS</button>
-          <button class="btn btn-secondary" onclick="exportPDF()">⬇ PDF</button>
-          <button class="btn btn-danger btn-sm" id="pag-del-btn" onclick="eliminarPagoActual()" style="display:none;margin-right:auto">Eliminar</button>
-          <button class="btn btn-primary" id="pag-save-btn" onclick="guardarPago()">Registrar</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- PROYECCIÓN -->
-    <div class="tab-panel" id="tab-proyeccion">
-      <div class="ph"><div><h2>Proyección</h2><p>Simulá aumentos sobre el plantel activo</p></div></div>
-      <div class="proy-bar">
-        <label>Aumento:</label>
-        <input type="number" id="pct" value="30" min="-100" max="1000" oninput="calcProy()">
-        <span style="color:var(--txt3);font-size:12px">%</span>
-        <button class="btn btn-secondary btn-sm" onclick="calcProy()">Aplicar</button>
-        <button class="btn btn-ghost btn-sm" onclick="resetProy()">Restaurar</button>
-        <div style="display:flex;align-items:center;gap:6px;margin-left:8px">
-          <label>Categoría:</label>
-          <select class="fi" id="proy-cat" onchange="renderProy()" style="padding:5px 9px;font-size:11px">
-            <option value="">Todas</option><option>Primera División</option><option>Reserva</option><option>4ta División</option><option>5ta División</option><option>6ta División</option><option>7ma División</option><option>8va División</option><option>9na División</option>
-          </select>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <label>Rol:</label>
-          <select class="fi" id="proy-rol" onchange="renderProy()" style="padding:5px 9px;font-size:11px">
-            <option value="">Todos</option><option>Jugador</option><option>DT</option><option>Ayudante de Campo</option><option>PF</option><option>Médico</option><option>Utilero</option><option>Mantenimiento</option><option>Entrenador de Arqueros</option><option>Otro</option>
-          </select>
-        </div>
-        <div class="proy-sum"><span>Total proyectado:</span><strong id="proy-tot">$0</strong><span id="proy-diff" style="font-size:11px;color:var(--txt3);margin-left:4px"></span></div>
-      </div>
-      <div class="tw">
-        <table>
-          <thead><tr>
-            <th class="sortable" onclick="setSortProy('nombre')">Nombre</th>
-            <th class="sortable" onclick="setSortProy('rol')">Rol</th>
-            <th class="sortable" onclick="setSortProy('categoria')">Categoría</th>
-            <th class="sortable" onclick="setSortProy('basico')">Básico actual</th>
-            <th>Bono actual</th>
-            <th class="sortable" onclick="setSortProy('total')">Total actual</th>
-            <th>Básico nuevo</th><th>Bono nuevo</th>
-            <th class="sortable" onclick="setSortProy('totalNuevo')">Total nuevo</th>
-            <th class="sortable" onclick="setSortProy('delta')">Δ%</th>
-          </tr></thead>
-          <tbody id="tb-proy"></tbody>
-        </table>
-      </div>
-      <div style="margin-top:10px;display:flex;justify-content:flex-end;gap:8px">
-        <button class="btn btn-ghost btn-sm" onclick="exportProyXLS()">⬇ XLS</button>
-        <button class="btn btn-ghost btn-sm" onclick="exportProyPDF()">⬇ PDF</button>
-      </div>
-    </div>
-
-    <!-- BAJAS -->
-    <div class="tab-panel" id="tab-bajas">
-      <div class="ph"><div><h2>Bajas</h2><p>Personal desvinculado del club</p></div></div>
-      <div class="tw"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Categoría</th><th>Fecha Baja</th><th>Motivo</th><th>Acciones</th></tr></thead><tbody id="tb-b"></tbody></table></div>
-    </div>
-
-    <!-- IMPORTAR -->
-    <div class="tab-panel" id="tab-importar">
-      <div class="ph"><div><h2>Importar Personal</h2><p>Carga masiva desde archivo Excel (.xlsx)</p></div><div class="ph-actions"><button class="btn btn-ghost" onclick="dlTemplate()">⬇ Plantilla Excel</button></div></div>
-      <div style="max-width:560px">
-        <div class="drop-zone" id="dz" onclick="document.getElementById('fi-import').click()">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#C8102E" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-          <strong>Arrastrá o hacé click para subir</strong>
-          <p>Archivos .xlsx — usá la plantilla descargable</p>
-          <input type="file" id="fi-import" accept=".xlsx" style="display:none" onchange="handleImport(this)">
-        </div>
-        <div id="imp-prev" style="margin-top:14px;display:none">
-          <p style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);margin-bottom:8px">Vista previa — <span id="imp-n">0</span> registros</p>
-          <div class="tw" style="max-height:260px;overflow-y:auto"><table><thead><tr id="imp-th"></tr></thead><tbody id="imp-tb"></tbody></table></div>
-          <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">
-            <button class="btn btn-ghost" onclick="cancelImport()">Cancelar</button>
-            <button class="btn btn-primary" onclick="confirmImport()">Confirmar Importación</button>
-          </div>
-        </div>
-        <div style="margin-top:18px;background:var(--bg1);border:1px solid var(--border);padding:14px">
-          <p style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt3);margin-bottom:8px">Columnas del template</p>
-          <div class="cols-list" id="cols-list"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- BALANCE -->
-    <div class="tab-panel" id="tab-balance">
-      <div class="ph">
-        <div><h2>Balance</h2><p>Análisis de masa salarial por tipo de facturación</p></div>
-        <div class="ph-actions"><button class="btn btn-ghost btn-sm" onclick="renderBalance()">↺ Actualizar</button></div>
-      </div>
-      <div class="stats" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
-        <div class="sc accent"><div class="lbl">Masa Total</div><div class="val" id="bal-total">—</div><div class="sub">todas las funciones activas</div></div>
-        <div class="sc" style="border-left:3px solid var(--amber)"><div class="lbl">Con Factura</div><div class="val" id="bal-fac">—</div><div class="sub" id="bal-fac-pct">—</div></div>
-        <div class="sc" style="border-left:3px solid var(--txt3)"><div class="lbl">Sin Factura</div><div class="val" id="bal-nofac">—</div><div class="sub" id="bal-nofac-pct">—</div></div>
-        <div class="sc"><div class="lbl">Funciones Con Factura</div><div class="val" id="bal-fac-n">—</div></div>
-        <div class="sc"><div class="lbl">Funciones Sin Factura</div><div class="val" id="bal-nofac-n">—</div></div>
-        <div class="sc"><div class="lbl">Personas Mixtas</div><div class="val" id="bal-mixtas-n">—</div><div class="sub">cobran de ambas formas</div></div>
-      </div>
-      <!-- Barra proporcional -->
-      <div style="margin-bottom:20px;background:var(--bg1);border:1px solid var(--border);padding:18px">
-        <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt3);margin-bottom:10px">Distribución de masa salarial</div>
-        <div style="display:flex;height:28px;overflow:hidden;gap:2px;margin-bottom:8px">
-          <div id="bal-bar-fac" style="background:var(--amber);height:100%;transition:width .5s ease;display:flex;align-items:center;justify-content:center;min-width:0">
-            <span id="bal-bar-fac-lbl" style="font-size:10px;font-weight:700;color:#000;white-space:nowrap;padding:0 8px"></span>
-          </div>
-          <div id="bal-bar-nofac" style="background:var(--bg3);border:1px solid var(--border2);height:100%;flex:1;display:flex;align-items:center;justify-content:center;min-width:0">
-            <span id="bal-bar-nofac-lbl" style="font-size:10px;color:var(--txt3);white-space:nowrap;padding:0 8px"></span>
-          </div>
-        </div>
-        <div style="display:flex;gap:16px">
-          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3)"><div style="width:10px;height:10px;background:var(--amber);flex-shrink:0"></div>Con factura</div>
-          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3)"><div style="width:10px;height:10px;background:var(--bg3);border:1px solid var(--border2);flex-shrink:0"></div>Sin factura</div>
-        </div>
-      </div>
-      <!-- Charts por rol y categoría -->
-      <div class="charts">
-        <div class="cb"><h4>Por Rol — Con Factura</h4><div class="bar-chart" id="bal-rol-fac"></div></div>
-        <div class="cb"><h4>Por Rol — Sin Factura</h4><div class="bar-chart" id="bal-rol-nofac"></div></div>
-        <div class="cb"><h4>Por Categoría — Con Factura</h4><div class="bar-chart" id="bal-cat-fac"></div></div>
-        <div class="cb"><h4>Por Categoría — Sin Factura</h4><div class="bar-chart" id="bal-cat-nofac"></div></div>
-      </div>
-      <!-- Tabla personas mixtas -->
-      <div id="bal-mixtas-section" style="margin-top:20px;display:none">
-        <p style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--amber);margin-bottom:10px">⚠ Personas con facturación mixta</p>
-        <div class="tw">
-          <table>
-            <thead><tr><th>Nombre</th><th>Roles</th><th>Categorías</th><th>Factura</th><th>Básico</th><th>Bono</th><th>Total función</th></tr></thead>
-            <tbody id="bal-mixtas-tb"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-<!-- MODAL PERSONA -->
-<div class="mo-overlay" id="mo-persona">
-  <div class="mo">
-    <div class="mo-hd"><h3 id="mo-p-title">Nueva Persona</h3><span class="mo-x" onclick="closeMoPersona()">×</span></div>
-    <div class="mo-bd">
-      <input type="hidden" id="p-id">
-      <div class="fs">Identificación</div>
-      <div class="fg">
-        <div class="fg-row ff"><label>Nombre completo *</label><input id="p-nombre" type="text"></div>
-        <div class="fg-row"><label>DNI</label><input id="p-dni" type="text"></div>
-        <div class="fg-row"><label>Fecha de nacimiento</label><input id="p-fnac" type="text" placeholder="dd/mm/aaaa"></div>
-        <div class="fg-row"><label>Procedencia</label><input id="p-proc" type="text"></div>
-      </div>
-      <div class="fs">Contacto</div>
-      <div class="fg">
-        <div class="fg-row"><label>Teléfono</label><input id="p-tel" type="text"></div>
-        <div class="fg-row"><label>Dirección</label><input id="p-dir" type="text"></div>
-        <div class="fg-row"><label>Contacto emergencia</label><input id="p-en" type="text"></div>
-        <div class="fg-row"><label>Tel. emergencia</label><input id="p-et" type="text"></div>
-      </div>
-      <div class="fs">Rol y Remuneración</div>
-      <div class="fg fg3">
-        <div class="fg-row ff"><label>Roles *</label>
-          <div class="ms-modal-wrap" onclick="focusMsModal('p-roles')">
-            <div class="ms-modal-chips" id="chips-p-roles"></div>
-            <div class="ms-modal-opts" id="opts-p-roles"></div>
-          </div>
-        </div>
-        <div class="fg-row ff"><label>Categorías (División)</label>
-          <div class="ms-modal-wrap" onclick="focusMsModal('p-cats')">
-            <div class="ms-modal-chips" id="chips-p-cats"></div>
-            <div class="ms-modal-opts" id="opts-p-cats"></div>
-          </div>
-        </div>
-        <div class="fg-row"><label>Escalafón</label>
-          <select id="p-esc"><option value="">Sin escalafón</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
-        </div>
-        <div class="fg-row"><label>Estado</label><select id="p-est"><option>Activo</option><option>Baja</option></select></div>
-        <div class="fg-row"><label>Factura</label>
-          <select id="p-factura">
-            <option value="No">Sin factura</option>
-            <option value="Si">Con factura</option>
-          </select>
-        </div>
-        <div class="fg-row"><label>Básico ($)</label><input id="p-bas" type="number" min="0" placeholder="0"></div>
-        <div class="fg-row"><label>Bono ($)</label><input id="p-bon" type="number" min="0" placeholder="0"></div>
-      </div>
-      <div class="fs">Datos Bancarios</div>
-      <div class="fg">
-        <div class="fg-row"><label>CUIT</label><input id="p-cuit" type="text"></div>
-        <div class="fg-row"><label>Banco</label><input id="p-banco" type="text"></div>
-        <div class="fg-row"><label>CBU</label><input id="p-cbu" type="text"></div>
-        <div class="fg-row"><label>Alias</label><input id="p-alias" type="text"></div>
-      </div>
-      <div class="fs">Notas</div>
-      <div class="fg"><div class="fg-row ff"><label>Observaciones internas</label><textarea id="p-notas"></textarea></div></div>
-    </div>
-    <div class="mo-ft"><button class="btn btn-ghost" onclick="closeMoPersona()">Cancelar</button><button class="btn btn-primary" onclick="savePersona()">Guardar</button></div>
-  </div>
-</div>
-
-<!-- MODAL FICHA -->
-<div class="mo-overlay" id="mo-ficha">
-  <div class="mo" style="max-width:700px">
-    <div class="mo-hd"><h3 id="ficha-title"></h3><span class="mo-x" onclick="closeFicha()">×</span></div>
-    <div class="mo-bd" id="ficha-body"></div>
-    <div class="mo-ft">
-      <button class="btn btn-danger btn-sm" id="ficha-baja-btn" onclick="startBaja()">Dar de Baja</button>
-      <button class="btn btn-secondary btn-sm" onclick="editFromFicha()">Editar</button>
-      <button class="btn btn-ghost" onclick="closeFicha()">Cerrar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL BAJA -->
-<div class="mo-overlay" id="mo-baja">
-  <div class="mo" style="max-width:400px">
-    <div class="mo-hd"><h3>Confirmar Baja</h3><span class="mo-x" onclick="document.getElementById('mo-baja').classList.remove('open')">×</span></div>
-    <div class="mo-bd">
-      <p style="font-size:12px;color:var(--txt2);margin-bottom:12px">El registro pasará a la pestaña Bajas.</p>
-      <div class="fg-row"><label>Motivo</label><textarea id="baja-mot" style="min-height:70px;width:100%;padding:8px 10px;background:var(--bg2);border:1px solid var(--border2);color:var(--txt);font-family:var(--sans);font-size:12px;outline:none;resize:vertical"></textarea></div>
-    </div>
-    <div class="mo-ft">
-      <button class="btn btn-ghost" onclick="document.getElementById('mo-baja').classList.remove('open')">Cancelar</button>
-      <button class="btn btn-danger" onclick="confirmarBaja()">Confirmar Baja</button>
-    </div>
-  </div>
-</div>
-
 </body>
 </html>
