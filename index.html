@@ -38,24 +38,9 @@ const ESCALAFONES = ['A','B','C','D'];
 const TEMPLATE_COLS = ['id','nombre','dni','fechaNac','tel','direccion','procedencia','cuit','banco','cbu','alias','emergNombre','emergTel','rol','categoria','basico','bono','estado','notas','escalafon'];
 
 // ══════════════════════════════════════════
+// ══════════════════════════════════════════
 // AUTH
 // ══════════════════════════════════════════
-onAuthStateChanged(auth, user => {
-  if (user) {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
-    document.getElementById('app').style.flexDirection = 'column';
-    document.getElementById('tu').textContent = user.email;
-    loadAll();
-  } else {
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('app').style.display = 'none';
-  }
-});
-
-document.getElementById('lp').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
-document.getElementById('lu').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('lp').focus(); });
-document.getElementById('login-btn').addEventListener('click', doLogin);
 
 async function doLogin() {
   const email = document.getElementById('lu').value.trim();
@@ -253,13 +238,13 @@ function renderFilterChips() {
   ).join('') + `<span class="ms-chip" style="background:transparent;border-color:var(--border);color:var(--txt3);cursor:pointer" onclick="clearMs('rol');clearMs('cat')">✕ Limpiar todo</span>`;
 }
 
-// Cerrar dropdowns al click fuera
-document.addEventListener('click', e => {
+// Cerrar dropdown al click fuera — se registra en DOMContentLoaded
+window._closeDropdowns = e => {
   if (!e.target.closest('.ms-wrap')) {
     document.querySelectorAll('.ms-dropdown').forEach(d=>d.classList.remove('open'));
     document.querySelectorAll('.ms-btn').forEach(b=>b.classList.remove('open'));
   }
-});
+};
 
 // ══════════════════════════════════════════
 // MULTI-SELECT — MODAL PERSONA
@@ -1239,10 +1224,13 @@ async function confirmImport() {
 window.confirmImport = confirmImport;
 
 // Drag & drop
-const dz=document.getElementById('dz');
-dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
-dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
-dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)window.handleImport({files:e.dataTransfer.files});});
+function initDragDrop() {
+  const dz=document.getElementById('dz');
+  if (!dz) return;
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)window.handleImport({files:e.dataTransfer.files});});
+}
 
 // ══════════════════════════════════════════
 // BALANCE
@@ -1339,17 +1327,6 @@ function renderBalance() {
   ).join('');
 }
 window.renderBalance = renderBalance;
-document.querySelectorAll('.nav-item').forEach(item => {
-  item.addEventListener('click', () => {
-    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-    item.classList.add('active');
-    document.getElementById('tab-'+item.dataset.tab).classList.add('active');
-    if (item.dataset.tab==='proyeccion') initProy();
-    if (item.dataset.tab==='pagos') renderPagos();
-    if (item.dataset.tab==='balance') renderBalance();
-  });
-});
 
 // ══════════════════════════════════════════
 // UTILS
@@ -1365,7 +1342,51 @@ function toast(msg,err){
 }
 function autoId(){ return 'BFC'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,5).toUpperCase(); }
 
-document.getElementById('cols-list').innerHTML = TEMPLATE_COLS.map(c=>`<code>${c}</code>`).join('');
+// ══════════════════════════════════════════
+// INIT DOM — todo lo que toca el DOM al cargar
+// ══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  // Auth
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      document.getElementById('app').style.flexDirection = 'column';
+      document.getElementById('tu').textContent = user.email;
+      loadAll();
+    } else {
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('app').style.display = 'none';
+    }
+  });
+
+  // Login
+  document.getElementById('login-btn').addEventListener('click', doLogin);
+  document.getElementById('lp').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+  document.getElementById('lu').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('lp').focus(); });
+
+  // Cerrar dropdowns al click fuera
+  document.addEventListener('click', window._closeDropdowns);
+
+  // Navegación
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+      item.classList.add('active');
+      document.getElementById('tab-'+item.dataset.tab).classList.add('active');
+      if (item.dataset.tab==='proyeccion') initProy();
+      if (item.dataset.tab==='pagos') renderPagos();
+      if (item.dataset.tab==='balance') renderBalance();
+    });
+  });
+
+  // Drag & drop
+  initDragDrop();
+
+  // Cols list
+  document.getElementById('cols-list').innerHTML = TEMPLATE_COLS.map(c=>`<code>${c}</code>`).join('');
+});
 </script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
