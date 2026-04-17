@@ -396,6 +396,7 @@ tr.group-hd:hover{background:var(--bg3)!important}
         <button class="btn btn-ghost btn-sm ch-tab" data-ch="bajas" onclick="switchCH('bajas')">Bajas</button>
         <button class="btn btn-ghost btn-sm ch-tab" data-ch="balance-ch" onclick="switchCH('balance-ch')">Balance Facturación</button>
         <button class="btn btn-ghost btn-sm ch-tab" data-ch="importar" onclick="switchCH('importar')">Importar</button>
+        <button class="btn btn-ghost btn-sm ch-tab" data-ch="snapshots" onclick="switchCH('snapshots')">📸 Snapshots</button>
       </div>
 
       <!-- PERSONAL -->
@@ -603,6 +604,20 @@ tr.group-hd:hover{background:var(--bg3)!important}
             <div class="cols-list" id="cols-list"></div>
           </div>
         </div>
+      </div>
+
+      <!-- SNAPSHOTS -->
+      <div class="ch-panel" id="ch-snapshots">
+        <div class="ph">
+          <div><h2>Snapshots de Plantel</h2><p>Fotos del plantel en un momento dado — permite ver qué cobraba cada persona en cualquier período</p></div>
+          <div class="ph-actions">
+            <button class="btn btn-primary" onclick="tomarSnapshot()">📸 Tomar Snapshot Ahora</button>
+          </div>
+        </div>
+        <div style="background:var(--amber-lt);border:1px solid var(--amber);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--amber)">
+          💡 Un snapshot guarda una copia exacta del plantel completo (nombres, roles, básico, bono, escalafón). Se puede tomar manualmente o queda uno automático cada vez que se registra un pago mensual.
+        </div>
+        <div id="snapshots-list"></div>
       </div>
     </div>
 
@@ -1031,7 +1046,39 @@ onAuthStateChanged(auth, user => {
 
 // ── FIRESTORE: PERSONAL ──
 async function fsGetPersonal()   { const s=await getDocs(collection(db,'personal')); return s.docs.map(d=>({id:d.id,...d.data()})); }
-async function fsSavePersona(p)  { const id=p.id||autoId(); await setDoc(doc(db,'personal',id),{...p,id}); return id; }
+
+async function fsSavePersona(p, usuario) {
+  const id = p.id || autoId();
+  // Comparar con el registro existente para detectar cambios
+  const existente = S.personal.find(z => z.id === id);
+  if (existente) {
+    const CAMPOS_AUDITADOS = ['basico','bono','escalafon','factura','estado','roles','categorias'];
+    const cambios = [];
+    CAMPOS_AUDITADOS.forEach(campo => {
+      const vAnterior = JSON.stringify(existente[campo] ?? '');
+      const vNuevo    = JSON.stringify(p[campo] ?? '');
+      if (vAnterior !== vNuevo) cambios.push({ campo, anterior: existente[campo], nuevo: p[campo] });
+    });
+    if (cambios.length > 0) {
+      await addDoc(collection(db,'historial'), {
+        personaId: id, nombre: p.nombre,
+        fecha: new Date().toISOString(),
+        fechaDisplay: new Date().toLocaleDateString('es-AR'),
+        usuario: usuario || 'sistema',
+        cambios
+      });
+    }
+  }
+  await setDoc(doc(db,'personal',id), {...p, id});
+  return id;
+}
+
+async function fsGetHistorial(personaId) {
+  const s = await getDocs(collection(db,'historial'));
+  return s.docs.map(d=>({id:d.id,...d.data()}))
+    .filter(h => h.personaId === personaId)
+    .sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+}
 async function fsDeletePersona(id){ await deleteDoc(doc(db,'personal',id)); }
 async function fsDarDeBaja(id,motivo){
   const ref=doc(db,'personal',id); const snap=await getDoc(ref); if(!snap.exists()) return;
@@ -1086,6 +1133,7 @@ function switchCH(tab) {
   document.querySelectorAll('.ch-panel').forEach(p=>p.classList.toggle('active',p.id==='ch-'+tab));
   if(tab==='proyeccion') initProy();
   if(tab==='balance-ch') renderBalance();
+  if(tab==='snapshots') renderSnapshots();
   if(tab==='pagos') renderPagos();
 }
 window.switchCH = switchCH;
@@ -1287,7 +1335,11 @@ async function savePersona(){
     estado:document.getElementById('p-est').value, notas:document.getElementById('p-notas').value
   };
   load(true);
-  try { await fsSavePersona(persona); await loadPersonal(); window.closeMoPersona(); toast('Guardado'); }
+  try {
+    const usuario = auth.currentUser?.email || 'sistema';
+    await fsSavePersona(persona, usuario);
+    await loadPersonal(); window.closeMoPersona(); toast('Guardado');
+  }
   catch(e){ toast('Error: '+e.message,true); }
   load(false);
 }
@@ -1341,10 +1393,49 @@ function openFicha(id){
         <div class="fr"><span class="fk">Alias</span><span class="fv">${x(p.alias)||'—'}</span></div>
       </div>
     </div>
-    ${p.notas?`<div style="margin-top:10px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--txt3)">${x(p.notas)}</div>`:''}`;
+    ${p.notas?`<div style="margin-top:10px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--txt3)">${x(p.notas)}</div>`:''}
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt3)">Historial de cambios</span>
+        <button class="btn btn-ghost btn-sm" onclick="loadHistorial('${p.id}')">Ver historial</button>
+      </div>
+      <div id="historial-content" style="font-size:12px;color:var(--txt3)">Hacé click en "Ver historial" para cargar.</div>
+    </div>`;
   document.getElementById('mo-ficha').classList.add('open');
 }
 window.openFicha = openFicha;
+
+async function loadHistorial(personaId){
+  const cont=document.getElementById('historial-content');
+  if(!cont) return;
+  cont.innerHTML='<span style="color:var(--txt3)">Cargando…</span>';
+  try {
+    const historial=await fsGetHistorial(personaId);
+    if(!historial.length){ cont.innerHTML='<span style="color:var(--txt3)">Sin cambios registrados.</span>'; return; }
+    const LABELS={'basico':'Básico','bono':'Bono','escalafon':'Escalafón','factura':'Factura','estado':'Estado','roles':'Roles','categorias':'Categorías'};
+    cont.innerHTML=historial.map(h=>`
+      <div style="border-left:3px solid var(--border2);padding:8px 12px;margin-bottom:8px;background:var(--bg2);border-radius:0 6px 6px 0">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-weight:600;color:var(--txt2)">${x(h.fechaDisplay||h.fecha?.slice(0,10)||'—')}</span>
+          <span style="color:var(--txt3)">${x(h.usuario||'sistema')}</span>
+        </div>
+        ${(h.cambios||[]).map(c=>{
+          const label=LABELS[c.campo]||c.campo;
+          const ant=Array.isArray(c.anterior)?c.anterior.join(', '):(c.anterior??'—');
+          const nvo=Array.isArray(c.nuevo)?c.nuevo.join(', '):(c.nuevo??'—');
+          const esMonto=c.campo==='basico'||c.campo==='bono';
+          return`<div style="display:flex;gap:8px;align-items:center;font-size:11px;margin-bottom:3px">
+            <span style="color:var(--txt3);min-width:80px">${label}</span>
+            <span style="color:var(--red);text-decoration:line-through">${esMonto?f(ant):x(String(ant))}</span>
+            <span style="color:var(--txt3)">→</span>
+            <span style="color:var(--green);font-weight:600">${esMonto?f(nvo):x(String(nvo))}</span>
+          </div>`;
+        }).join('')}
+      </div>`).join('');
+  } catch(e){ cont.innerHTML='<span style="color:var(--red)">Error al cargar historial.</span>'; }
+}
+window.loadHistorial = loadHistorial;
+
 window.closeFicha = ()=>document.getElementById('mo-ficha').classList.remove('open');
 window.editFromFicha = ()=>{ window.closeFicha(); openMoPersona(S.cur.id); };
 window.startBaja = ()=>{ document.getElementById('baja-mot').value=''; window.closeFicha(); document.getElementById('mo-baja').classList.add('open'); };
@@ -1456,7 +1547,13 @@ async function guardarPago(){
     await fsGuardarPago(id,{id,fecha,periodo,totalAbonado:total,observaciones:document.getElementById('po').value||'',detalles});
     S.pagos=await fsGetPagos();
     window.hidePagoForm(); renderPagos();
-    toast(S.pagoEditId?'Pago actualizado':'Pago registrado');
+    const esNuevo = !S.pagoEditId;
+    toast(esNuevo?'Pago registrado':'Pago actualizado');
+    // Snapshot automático solo al crear un pago nuevo
+    if (esNuevo) {
+      const periodo = document.getElementById('pp').value||'Sin período';
+      try { await tomarSnapshot(`Pago — ${periodo}`); } catch(e){}
+    }
   } catch(e){ toast('Error: '+e.message,true); }
   load(false);
 }
@@ -2217,6 +2314,114 @@ function switchCont(tab){
   if(tab==='ordenes'){ renderOrdenes(); }
 }
 window.switchCont = switchCont;
+
+// ── SNAPSHOTS ──
+async function fsGetSnapshots() {
+  const s=await getDocs(collection(db,'snapshots'));
+  return s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+}
+async function fsSaveSnapshot(snap) { await setDoc(doc(db,'snapshots',snap.id),snap); }
+
+async function tomarSnapshot(etiqueta){
+  const activos=S.personal.filter(p=>p.estado==='Activo');
+  const now=new Date();
+  const id='SNAP-'+now.toISOString().replace(/[:.]/g,'-');
+  const snap={
+    id, fecha:now.toISOString(),
+    fechaDisplay:now.toLocaleDateString('es-AR'),
+    etiqueta: etiqueta||`Snapshot ${now.toLocaleDateString('es-AR')}`,
+    usuario:auth.currentUser?.email||'sistema',
+    masaTotal:activos.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0),
+    cantPersonas:new Set(activos.map(p=>p.nombre)).size,
+    cantFunciones:activos.length,
+    plantel:activos.map(p=>({
+      id:p.id, nombre:p.nombre,
+      roles:Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[]),
+      categorias:Array.isArray(p.categorias)?p.categorias:(p.categoria?[p.categoria]:[]),
+      escalafon:p.escalafon||'', factura:p.factura||'No',
+      basico:p.basico||0, bono:p.bono||0,
+      total:(p.basico||0)+(p.bono||0)
+    }))
+  };
+  load(true);
+  try {
+    await fsSaveSnapshot(snap);
+    await renderSnapshots();
+    toast(`Snapshot guardado — ${activos.length} funciones, ${f(snap.masaTotal)}`);
+  } catch(e){ toast('Error: '+e.message,true); }
+  load(false);
+}
+window.tomarSnapshot = tomarSnapshot;
+
+async function renderSnapshots(){
+  const cont=document.getElementById('snapshots-list');
+  if(!cont) return;
+  cont.innerHTML='<p style="color:var(--txt3);font-size:13px">Cargando…</p>';
+  try {
+    const snaps=await fsGetSnapshots();
+    if(!snaps.length){ cont.innerHTML='<p style="color:var(--txt3);font-size:13px;padding:20px 0">Sin snapshots. Tomá uno ahora.</p>'; return; }
+    cont.innerHTML=snaps.map(s=>`
+      <div style="background:#fff;border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow)">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;background:var(--bg2)" onclick="toggleSnap('${s.id}')">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:var(--txt)">${x(s.etiqueta)}</div>
+            <div style="font-size:12px;color:var(--txt3);margin-top:2px">${x(s.fechaDisplay)} · ${s.cantPersonas} personas · ${s.cantFunciones} funciones · ${f(s.masaTotal)} masa total</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:11px;color:var(--txt3)">${x(s.usuario)}</span>
+            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();exportSnap('${s.id}')">⬇ XLS</button>
+            <span style="color:var(--txt3);font-size:18px" id="snap-arrow-${s.id}">▶</span>
+          </div>
+        </div>
+        <div id="snap-detail-${s.id}" style="display:none;overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="background:var(--bg3);border-bottom:1px solid var(--border)">
+              <th style="padding:8px 12px;text-align:left;color:var(--txt3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Nombre</th>
+              <th style="padding:8px 12px;text-align:left;color:var(--txt3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Rol</th>
+              <th style="padding:8px 12px;text-align:left;color:var(--txt3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Categoría</th>
+              <th style="padding:8px 12px;text-align:left;color:var(--txt3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Escal.</th>
+              <th style="padding:8px 12px;text-align:right;color:var(--txt3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Básico</th>
+              <th style="padding:8px 12px;text-align:right;color:var(--txt3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Bono</th>
+              <th style="padding:8px 12px;text-align:right;color:var(--txt3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Total</th>
+            </tr></thead>
+            <tbody>
+              ${(s.plantel||[]).map(p=>`<tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:8px 12px;font-weight:600;color:var(--txt)">${x(p.nombre)}</td>
+                <td style="padding:8px 12px;color:var(--txt2)">${x((p.roles||[]).join(', ')||'—')}</td>
+                <td style="padding:8px 12px;color:var(--txt2)">${x((p.categorias||[]).join(', ')||'—')}</td>
+                <td style="padding:8px 12px">${p.escalafon?`<span class="badge ba">${p.escalafon}</span>`:'—'}</td>
+                <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px">${f(p.basico)}</td>
+                <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:12px">${f(p.bono)}</td>
+                <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--txt)">${f(p.total)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`).join('');
+  } catch(e){ cont.innerHTML='<p style="color:var(--red);font-size:13px">Error al cargar snapshots.</p>'; }
+}
+window.renderSnapshots = renderSnapshots;
+
+function toggleSnap(id){
+  const det=document.getElementById('snap-detail-'+id);
+  const arr=document.getElementById('snap-arrow-'+id);
+  if(!det) return;
+  const open=det.style.display==='block';
+  det.style.display=open?'none':'block';
+  if(arr) arr.textContent=open?'▶':'▼';
+}
+window.toggleSnap = toggleSnap;
+
+async function exportSnap(snapId){
+  const snaps=await fsGetSnapshots();
+  const snap=snaps.find(s=>s.id===snapId); if(!snap) return;
+  const data=[['Nombre','Roles','Categorías','Escalafón','Factura','Básico','Bono','Total']];
+  (snap.plantel||[]).forEach(p=>data.push([p.nombre,(p.roles||[]).join(', '),(p.categorias||[]).join(', '),p.escalafon||'',p.factura||'No',p.basico||0,p.bono||0,p.total||0]));
+  const ws=XLSX.utils.aoa_to_sheet(data), wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Snapshot');
+  XLSX.writeFile(wb,`BFC_Snapshot_${snap.fechaDisplay.replace(/\//g,'-')}.xlsx`);
+}
+window.exportSnap = exportSnap;
 
 // ── HELPERS RENDER ──
 function renderBar(id,data,max,color=''){
