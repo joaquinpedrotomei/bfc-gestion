@@ -1057,21 +1057,7 @@ async function fsSaveTipo(t)     { const id=t.id||autoId(); await setDoc(doc(db,
 async function fsDeleteTipo(id)  { await deleteDoc(doc(db,'tipos',id)); }
 
 // ── CARGA GENERAL ──
-async function loadAll() {
-  load(true);
-  try { S.personal = await fsGetPersonal(); } catch(e){ S.personal=[]; }
-  try { S.pagos    = await fsGetPagos();    } catch(e){ S.pagos=[]; }
-  try { S.tipos    = await fsGetTipos();    } catch(e){ S.tipos=[]; }
-  if (!S.tipos.length) { // Inicializar tipos default
-    for (const t of TIPOS_DEFAULT) { try { await fsSaveTipo(t); } catch(e){} }
-    try { S.tipos = await fsGetTipos(); } catch(e){ S.tipos=TIPOS_DEFAULT; }
-  }
-  try { S.transacciones = await fsGetTrans();    } catch(e){ S.transacciones=[]; }
-  try { S.sponsors      = await fsGetSponsors(); } catch(e){ S.sponsors=[]; }
-  renderAll();
-  load(false);
-}
-window.loadAll = loadAll;
+
 
 async function loadPersonal() {
   load(true);
@@ -1081,15 +1067,7 @@ async function loadPersonal() {
 }
 window.loadPersonal = loadPersonal;
 
-function renderAll() {
-  renderPersonal(); renderBajas(); renderPagos(); renderBalance();
-  renderTiposSelect(); renderTiposTabla(); renderTransacciones();
-  renderSponsors(); renderDashboard(); initProy();
-  document.getElementById('cols-list').innerHTML = TEMPLATE_COLS.map(c=>`<code>${c}</code>`).join('');
-  // Set default month filter para resumen
-  const now=new Date(); document.getElementById('res-mes').value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  renderResumen();
-}
+
 
 // ── NAVEGACIÓN SECCIONES ──
 document.querySelectorAll('.snav-item').forEach(item=>{
@@ -1113,15 +1091,7 @@ function switchCH(tab) {
 window.switchCH = switchCH;
 
 // ── NAVEGACIÓN SUB-TABS CONT ──
-function switchCont(tab) {
-  document.querySelectorAll('.cont-tab').forEach(b=>b.classList.toggle('active',b.dataset.cont===tab));
-  document.querySelectorAll('.cont-panel').forEach(p=>p.classList.toggle('active',p.id==='cont-'+tab));
-  if(tab==='transacciones') renderTransacciones();
-  if(tab==='sponsors') renderSponsors();
-  if(tab==='tipos') renderTiposTabla();
-  if(tab==='resumen') renderResumen();
-}
-window.switchCont = switchCont;
+
 
 // CSS para sub-tabs activos
 const styleEl=document.createElement('style');
@@ -1736,95 +1706,12 @@ function setSortT(key){
 }
 window.setSortT = setSortT;
 
-function renderTransacciones(){
-  const q=(document.getElementById('ft-search').value||'').toLowerCase();
-  const tipoFil=document.getElementById('ft-tipo').value;
-  const ieFil=document.getElementById('ft-ie').value;
-  const areaFil=document.getElementById('ft-area').value;
-  const desde=document.getElementById('ft-desde').value;
-  const hasta=document.getElementById('ft-hasta').value;
-  let rows=S.transacciones.filter(t=>{
-    if(q&&!((t.descripcion||'').toLowerCase().includes(q)||(t.tipoNombre||'').toLowerCase().includes(q))) return false;
-    if(tipoFil&&t.tipoId!==tipoFil) return false;
-    if(ieFil&&t.clase!==ieFil) return false;
-    if(areaFil&&t.area!==areaFil) return false;
-    if(desde&&(t.fecha||'')<desde+'-01') return false;
-    if(hasta&&(t.fecha||'')>hasta+'-31') return false;
-    return true;
-  });
-  rows=[...rows].sort((a,b)=>{
-    let va,vb;
-    if(_sortT.key==='monto'){va=a.monto||0;vb=b.monto||0;}
-    else{va=(a[_sortT.key]||'').toString();vb=(b[_sortT.key]||'').toString();}
-    return va<vb?-_sortT.dir:va>vb?_sortT.dir:0;
-  });
-  const totalIng=rows.filter(t=>t.clase==='Ingreso').reduce((s,t)=>s+(t.monto||0),0);
-  const totalEgr=rows.filter(t=>t.clase==='Egreso').reduce((s,t)=>s+(t.monto||0),0);
-  const balance=totalIng-totalEgr;
-  st('trans-count',rows.length);
-  document.getElementById('trans-ing').textContent=f(totalIng);
-  document.getElementById('trans-egr').textContent=f(totalEgr);
-  const balEl=document.getElementById('trans-bal');
-  balEl.textContent=f(Math.abs(balance)); balEl.style.color=balance>=0?'var(--green)':'var(--red)';
-  const tb=document.getElementById('tb-trans');
-  if(!rows.length){tb.innerHTML='<tr class="empty"><td colspan="7">Sin transacciones</td></tr>';return;}
-  tb.innerHTML=rows.map(t=>{
-    const tipo=S.tipos.find(z=>z.id===t.tipoId);
-    const esIng=t.clase==='Ingreso';
-    return`<tr class="trans-row-${esIng?'ingreso':'egreso'}" onclick="openMoTransaccion('${t.id}')">
-      <td class="mo" style="font-size:12px">${t.fecha||'—'}</td>
-      <td><span class="badge ${esIng?'b-ingreso':'b-egreso'}">${esIng?'▲':'▼'} ${x(tipo?.nombre||t.tipoNombre||'—')}</span></td>
-      <td style="color:var(--txt2);max-width:220px;overflow:hidden;text-overflow:ellipsis">${x(t.descripcion||'—')}</td>
-      <td><span class="badge bd">${x(t.area||'—')}</span></td>
-      <td>${t.factura==='Si'?'<span class="badge b-fac">FAC</span>':'<span style="color:var(--txt3);font-size:12px">—</span>'}</td>
-      <td class="mo-total" style="color:${esIng?'var(--green)':'var(--red)'}">${f(t.monto)}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();eliminarTransaccion('${t.id}')">×</button></td>
-    </tr>`;
-  }).join('');
-}
-window.renderTransacciones = renderTransacciones;
 
-function openMoTransaccion(id){
-  const t=id?S.transacciones.find(z=>z.id===id):null;
-  document.getElementById('mo-trans-title').textContent=t?'Editar Transacción':'Nueva Transacción';
-  document.getElementById('tr-id').value=t?.id||'';
-  document.getElementById('tr-tipo').value=t?.tipoId||'';
-  document.getElementById('tr-fecha').value=t?.fecha||new Date().toISOString().slice(0,10);
-  document.getElementById('tr-desc').value=t?.descripcion||'';
-  document.getElementById('tr-monto').value=t?.monto||'';
-  document.getElementById('tr-area').value=t?.area||'General';
-  document.getElementById('tr-fac').value=t?.factura||'No';
-  document.getElementById('tr-medio').value=t?.medio||'Efectivo';
-  document.getElementById('tr-obs').value=t?.observaciones||'';
-  document.getElementById('mo-trans').classList.add('open');
-}
-window.openMoTransaccion = openMoTransaccion;
+
+
 window.closeMoTrans = ()=>document.getElementById('mo-trans').classList.remove('open');
 
-async function saveTransaccion(){
-  const tipoId=document.getElementById('tr-tipo').value;
-  const monto=parseFloat(document.getElementById('tr-monto').value);
-  const fecha=document.getElementById('tr-fecha').value;
-  if(!tipoId){toast('Seleccioná un tipo',true);return;}
-  if(!monto||monto<=0){toast('El monto debe ser mayor a 0',true);return;}
-  if(!fecha){toast('Fecha requerida',true);return;}
-  const tipo=S.tipos.find(z=>z.id===tipoId);
-  const trans={
-    id:document.getElementById('tr-id').value||autoId(),
-    tipoId, tipoNombre:tipo?.nombre||'', clase:tipo?.clase||'Ingreso',
-    fecha, descripcion:document.getElementById('tr-desc').value,
-    monto, area:document.getElementById('tr-area').value,
-    factura:document.getElementById('tr-fac').value,
-    medio:document.getElementById('tr-medio').value,
-    observaciones:document.getElementById('tr-obs').value,
-    creadoEn:new Date().toISOString()
-  };
-  load(true);
-  try { await fsSaveTrans(trans); S.transacciones=await fsGetTrans(); renderTransacciones(); window.closeMoTrans(); toast('Transacción guardada'); renderDashboard(); }
-  catch(e){toast('Error: '+e.message,true);}
-  load(false);
-}
-window.saveTransaccion = saveTransaccion;
+
 
 async function eliminarTransaccion(id){ if(!confirm('¿Eliminar esta transacción?')) return; load(true); try{await fsDeleteTrans(id);S.transacciones=await fsGetTrans();renderTransacciones();renderDashboard();toast('Eliminada');}catch(e){toast('Error',true);}load(false); }
 window.eliminarTransaccion = eliminarTransaccion;
