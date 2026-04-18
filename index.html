@@ -612,6 +612,51 @@ tr.group-hd:hover{background:var(--bg3)!important}
           <p style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--amber);margin-bottom:10px">⚠ Personas con facturación mixta</p>
           <div class="tw"><table><thead><tr><th>Nombre</th><th>Roles</th><th>Categorías</th><th>Factura</th><th>Básico</th><th>Bono</th><th>Total función</th></tr></thead><tbody id="bal-mixtas-tb"></tbody></table></div>
         </div>
+
+        <!-- TRACKER DE FACTURAS -->
+        <div style="margin-top:28px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+            <div>
+              <p style="font-size:13px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--txt2)">📄 Entrega de Facturas</p>
+              <p style="font-size:12px;color:var(--txt3);margin-top:2px">Registrá qué facturas recibiste cada mes</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <a href="https://drive.google.com/drive/folders/1LLQd3tso3R2WDKMItoQADKYZe1HSB4TB" target="_blank" class="btn btn-secondary" style="text-decoration:none">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                Carpeta Drive
+              </a>
+              <select class="fi" id="fac-anio" onchange="renderTrackerFacturas()" style="padding:7px 11px;font-size:13px"></select>
+            </div>
+          </div>
+          <div id="tracker-facturas-wrap" style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+              <thead>
+                <tr style="background:var(--bg2);border-bottom:2px solid var(--border)">
+                  <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txt3);position:sticky;left:0;background:var(--bg2);z-index:1;min-width:180px">Persona</th>
+                  <th id="fac-th-roles" style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txt3)">Rol</th>
+                  <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt3);white-space:nowrap">Ene</th>
+                  <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt3);white-space:nowrap">Feb</th>
+                  <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt3);white-space:nowrap">Mar</th>
+                  <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt3);white-space:nowrap">Abr</th>
+                  <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt3);white-space:nowrap">May</th>
+                  <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt3);white-space:nowrap">Jun</th>
+                  <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt3);white-space:nowrap">Jul</th>
+                  <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt3);white-space:nowrap">Ago</th>
+                  <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt3);white-space:nowrap">Sep</th>
+                  <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt3);white-space:nowrap">Oct</th>
+                  <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt3);white-space:nowrap">Nov</th>
+                  <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt3);white-space:nowrap">Dic</th>
+                  <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;color:var(--txt3);white-space:nowrap">✓</th>
+                </tr>
+              </thead>
+              <tbody id="tb-tracker-facturas"></tbody>
+            </table>
+          </div>
+          <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt3)"><span style="width:18px;height:18px;background:var(--green-lt);border:2px solid var(--green);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:var(--green)">✓</span>Entregada</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt3)"><span style="width:18px;height:18px;background:#fff;border:2px solid var(--border2);border-radius:4px;display:inline-block"></span>Pendiente</div>
+          </div>
+        </div>
       </div>
 
       <!-- IMPORTAR -->
@@ -920,13 +965,26 @@ tr.group-hd:hover{background:var(--bg3)!important}
         <div class="fg-row"><label>Proveedor (si es egreso)</label><select id="tr-proveedor"><option value="">Sin proveedor</option></select></div>
         <div class="fg-row"><label>Área</label><select id="tr-area"><option value="General">General</option><option value="Primera">Primera</option><option value="Inferiores">Inferiores</option></select></div>
         <div class="fg-row"><label>Factura</label><select id="tr-fac"><option value="No">Sin factura</option><option value="Si">Con factura</option></select></div>
+        <div class="fg-row" id="tr-fac-entregada-wrap" style="display:none"><label>¿Factura entregada?</label>
+          <select id="tr-fac-entregada">
+            <option value="No">❌ Pendiente</option>
+            <option value="Si">✅ Entregada</option>
+          </select>
+        </div>
         <div class="fg-row"><label>Medio de pago</label><select id="tr-medio"><option>Efectivo</option><option>Transferencia</option><option>Cheque</option><option>Mercado Pago</option><option>Otro</option></select></div>
         <div class="fg-row"><label>Estado de pago</label><select id="tr-estado-pago"><option value="Pagado">Pagado</option><option value="Pendiente">Pendiente</option><option value="Programado">Programado</option></select></div>
         <div class="fg-row" id="tr-fecha-pago-wrap"><label>Fecha programada de pago</label><input id="tr-fecha-pago" type="date"></div>
         <div class="fg-row ff"><label>Observaciones</label><textarea id="tr-obs" style="min-height:56px"></textarea></div>
       </div>
     </div>
-    <div class="mo-ft"><button class="btn btn-ghost" onclick="closeMoTrans()">Cancelar</button><button class="btn btn-primary" onclick="saveTransaccion()">Guardar</button></div>
+    <div class="mo-ft">
+      <a href="https://drive.google.com/drive/folders/1LLQd3tso3R2WDKMItoQADKYZe1HSB4TB" target="_blank" class="btn btn-ghost btn-sm" id="tr-drive-btn" style="display:none;text-decoration:none;margin-right:auto">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+        Ver facturas en Drive
+      </a>
+      <button class="btn btn-ghost" onclick="closeMoTrans()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveTransaccion()">Guardar</button>
+    </div>
   </div>
 </div>
 
@@ -1267,7 +1325,7 @@ function switchCH(tab) {
   document.querySelectorAll('.ch-tab').forEach(b=>b.classList.toggle('active',b.dataset.ch===tab));
   document.querySelectorAll('.ch-panel').forEach(p=>p.classList.toggle('active',p.id==='ch-'+tab));
   if(tab==='proyeccion') initProy();
-  if(tab==='balance-ch') renderBalance();
+  if(tab==='balance-ch') { renderBalance(); initTrackerAnios(); renderTrackerFacturas(); }
   if(tab==='snapshots') renderSnapshots();
   if(tab==='pagos') renderPagos();
 }
@@ -2324,6 +2382,7 @@ async function saveTransaccion(){
     fecha, descripcion:document.getElementById('tr-desc').value,
     monto, area:document.getElementById('tr-area').value,
     factura:document.getElementById('tr-fac').value,
+    facturaEntregada: document.getElementById('tr-fac').value==='Si' ? (document.getElementById('tr-fac-entregada').value||'No') : 'No',
     medio:document.getElementById('tr-medio').value,
     estadoPago, fechaPago:document.getElementById('tr-fecha-pago').value||'',
     proveedorId:provId||'', proveedorNombre:prov?.nombre||'',
@@ -2374,7 +2433,11 @@ function renderTransacciones(){
       <td><span class="badge ${esIng?'b-ingreso':'b-egreso'}">${esIng?'▲':'▼'} ${x(tipo?.nombre||t.tipoNombre||'—')}</span></td>
       <td style="color:var(--txt2);max-width:180px;overflow:hidden;text-overflow:ellipsis">${x(t.proveedorNombre||t.descripcion||'—')}</td>
       <td><span class="badge bd">${x(t.area||'—')}</span></td>
-      <td>${t.factura==='Si'?'<span class="badge b-fac">FAC</span>':'<span style="color:var(--txt3);font-size:12px">—</span>'}</td>
+      <td>${t.factura==='Si'
+        ? `<span class="badge b-fac">FAC</span> ${t.facturaEntregada==='Si'
+            ? '<span style="color:var(--green);font-size:11px">✓</span>'
+            : '<span style="color:var(--red);font-size:11px" title="Factura pendiente">⚠</span>'}`
+        : '<span style="color:var(--txt3);font-size:12px">—</span>'}</td>
       <td>${estadoBadge}</td>
       <td class="mo-total" style="color:${esIng?'var(--green)':'var(--red)'}">${f(t.monto)}</td>
       <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();eliminarTransaccion('${t.id}')">×</button></td>
@@ -2395,6 +2458,10 @@ function openMoTransaccion(id){
   document.getElementById('tr-proveedor').value=t?.proveedorId||'';
   document.getElementById('tr-area').value=t?.area||'General';
   document.getElementById('tr-fac').value=t?.factura||'No';
+  document.getElementById('tr-fac-entregada').value=t?.facturaEntregada||'No';
+  const esFac=(t?.factura||'No')==='Si';
+  document.getElementById('tr-fac-entregada-wrap').style.display=esFac?'flex':'none';
+  document.getElementById('tr-drive-btn').style.display=esFac?'':'none';
   document.getElementById('tr-medio').value=t?.medio||'Efectivo';
   document.getElementById('tr-estado-pago').value=t?.estadoPago||'Pagado';
   document.getElementById('tr-fecha-pago').value=t?.fechaPago||'';
@@ -2408,6 +2475,14 @@ window.openMoTransaccion = openMoTransaccion;
 document.getElementById('tr-estado-pago').addEventListener('change',function(){
   const wrap=document.getElementById('tr-fecha-pago-wrap');
   if(wrap) wrap.style.display=(this.value==='Pendiente'||this.value==='Programado')?'flex':'none';
+});
+
+document.getElementById('tr-fac').addEventListener('change', function(){
+  const wrap = document.getElementById('tr-fac-entregada-wrap');
+  const driveBtn = document.getElementById('tr-drive-btn');
+  const esFac = this.value === 'Si';
+  if(wrap) wrap.style.display = esFac ? 'flex' : 'none';
+  if(driveBtn) driveBtn.style.display = esFac ? '' : 'none';
 });
 
 // ── ACTUALIZAR loadAll para incluir proveedores, órdenes y caja ──
@@ -2429,7 +2504,7 @@ window.loadAll = loadAll;
 
 // ── ACTUALIZAR renderAll para incluir nuevas secciones ──
 function renderAll(){
-  renderPersonal(); renderBajas(); renderPagos(); renderBalance();
+  renderPersonal(); renderBajas(); renderPagos(); renderBalance(); initTrackerAnios();
   renderTiposSelect(); renderTiposTabla(); renderTransacciones();
   renderSponsors(); renderProveedores(); renderProveedoresSelect(); renderOrdenes(); renderDashboard(); initProy();
   document.getElementById('cols-list').innerHTML=TEMPLATE_COLS.map(c=>`<code>${c}</code>`).join('');
@@ -2804,6 +2879,89 @@ async function eliminarCalEvento(){
   load(false);
 }
 window.eliminarCalEvento = eliminarCalEvento;
+
+// ── TRACKER DE FACTURAS ──
+// Estado guardado en Firestore: colección 'facturas_tracker'
+// Doc ID: '{personaId}_{anio}' → { personaId, nombre, anio, meses: {1:bool,...,12:bool} }
+
+async function fsGetTrackerFacturas(anio) {
+  const s = await getDocs(collection(db, 'facturas_tracker'));
+  return s.docs.map(d => ({id: d.id, ...d.data()})).filter(d => d.anio === anio);
+}
+async function fsSaveTrackerFac(data) {
+  await setDoc(doc(db, 'facturas_tracker', data.id), data);
+}
+
+function initTrackerAnios() {
+  const sel = document.getElementById('fac-anio');
+  if (!sel) return;
+  const anioActual = new Date().getFullYear();
+  sel.innerHTML = '';
+  for (let a = anioActual + 1; a >= anioActual - 2; a--) {
+    sel.insertAdjacentHTML('beforeend', `<option value="${a}" ${a===anioActual?'selected':''}>${a}</option>`);
+  }
+}
+
+async function renderTrackerFacturas() {
+  const anio = parseInt(document.getElementById('fac-anio')?.value) || new Date().getFullYear();
+  const tb = document.getElementById('tb-tracker-facturas');
+  if (!tb) return;
+  tb.innerHTML = '<tr><td colspan="15" style="padding:20px;text-align:center;color:var(--txt3)">Cargando…</td></tr>';
+
+  // Personas con factura = Si, activas
+  const conFac = S.personal.filter(p => p.estado === 'Activo' && p.factura === 'Si');
+  if (!conFac.length) { tb.innerHTML = '<tr><td colspan="15" style="padding:20px;text-align:center;color:var(--txt3)">Sin personas con factura activas.</td></tr>'; return; }
+
+  // Cargar estado guardado
+  let trackerData = [];
+  try { trackerData = await fsGetTrackerFacturas(anio); } catch(e) {}
+  const trackerMap = {}; // personaId -> {meses}
+  trackerData.forEach(d => { trackerMap[d.personaId] = d; });
+
+  const mesActual = new Date().getMonth() + 1; // 1-12
+
+  tb.innerHTML = conFac.map(p => {
+    const roles = Array.isArray(p.roles) ? p.roles : (p.rol ? [p.rol] : []);
+    const state = trackerMap[p.id]?.meses || {};
+    const totalEntregadas = Object.values(state).filter(Boolean).length;
+
+    const mesesCells = Array.from({length:12},(_,i)=>{
+      const mes = i + 1;
+      const entregada = !!state[mes];
+      const esFuturo = anio === new Date().getFullYear() && mes > mesActual;
+      return `<td style="padding:6px 8px;text-align:center;border-left:1px solid var(--border)">
+        <button onclick="toggleFacMes('${p.id}','${p.nombre.replace(/'/g,"\\'")}',${anio},${mes})"
+          style="width:26px;height:26px;border-radius:5px;border:2px solid ${entregada?'var(--green)':'var(--border2)'};background:${entregada?'var(--green-lt)':esFuturo?'var(--bg3)':'#fff'};cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all .15s;opacity:${esFuturo?.5:1}"
+          title="${entregada?'Entregada — click para desmarcar':'Marcar como entregada'}">${entregada?'<span style="color:var(--green)">✓</span>':''}</button>
+      </td>`;
+    }).join('');
+
+    const pctColor = totalEntregadas === mesActual ? 'var(--green)' : totalEntregadas < mesActual ? 'var(--red)' : 'var(--txt3)';
+
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:10px 14px;font-weight:600;color:var(--txt);position:sticky;left:0;background:#fff;z-index:1">${x(p.nombre)}</td>
+      <td style="padding:10px 14px;font-size:12px;color:var(--txt2)">${x(roles[0]||'—')}</td>
+      ${mesesCells}
+      <td style="padding:6px 8px;text-align:center;border-left:1px solid var(--border);font-size:11px;font-weight:700;font-family:var(--mono);color:${pctColor};white-space:nowrap">${totalEntregadas}/${mesActual}</td>
+    </tr>`;
+  }).join('');
+}
+window.renderTrackerFacturas = renderTrackerFacturas;
+
+async function toggleFacMes(personaId, nombre, anio, mes) {
+  const docId = `${personaId}_${anio}`;
+  let existing = null;
+  try {
+    const snap = await getDoc(doc(db, 'facturas_tracker', docId));
+    if (snap.exists()) existing = snap.data();
+  } catch(e) {}
+  const meses = existing?.meses || {};
+  meses[mes] = !meses[mes]; // toggle
+  await fsSaveTrackerFac({ id: docId, personaId, nombre, anio, meses });
+  // Re-render sin recargar todo
+  await renderTrackerFacturas();
+}
+window.toggleFacMes = toggleFacMes;
 
 // ── HELPERS RENDER ──
 function renderBar(id,data,max,color=''){
