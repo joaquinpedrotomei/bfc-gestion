@@ -1165,27 +1165,46 @@ async function fsGetPersonal()   { const s=await getDocs(collection(db,'personal
 
 async function fsSavePersona(p, usuario) {
   const id = p.id || autoId();
-  // Comparar con el registro existente para detectar cambios
   const existente = S.personal.find(z => z.id === id);
   if (existente) {
     const CAMPOS_AUDITADOS = ['basico','bono','escalafon','factura','estado','roles','categorias'];
     const cambios = [];
     CAMPOS_AUDITADOS.forEach(campo => {
-      const vAnterior = JSON.stringify(existente[campo] ?? '');
-      const vNuevo    = JSON.stringify(p[campo] ?? '');
-      if (vAnterior !== vNuevo) cambios.push({ campo, anterior: existente[campo], nuevo: p[campo] });
+      const vAnterior = JSON.stringify(existente[campo] ?? null);
+      const vNuevo    = JSON.stringify(p[campo] ?? null);
+      if (vAnterior !== vNuevo) {
+        // Limpiar undefined — Firestore no lo acepta
+        const ant = existente[campo] ?? null;
+        const nvo = p[campo] ?? null;
+        cambios.push({
+          campo,
+          anterior: ant === undefined ? null : ant,
+          nuevo:    nvo === undefined ? null : nvo
+        });
+      }
     });
     if (cambios.length > 0) {
-      await addDoc(collection(db,'historial'), {
-        personaId: id, nombre: p.nombre,
+      // Limpiar todo el objeto antes de guardar
+      const entrada = {
+        personaId: id,
+        nombre: p.nombre || '',
         fecha: new Date().toISOString(),
         fechaDisplay: new Date().toLocaleDateString('es-AR'),
         usuario: usuario || 'sistema',
-        cambios
-      });
+        cambios: cambios.map(c => ({
+          campo: c.campo,
+          anterior: c.anterior === undefined ? null : (Array.isArray(c.anterior) ? c.anterior : c.anterior),
+          nuevo:    c.nuevo    === undefined ? null : (Array.isArray(c.nuevo)    ? c.nuevo    : c.nuevo)
+        }))
+      };
+      await addDoc(collection(db,'historial'), entrada);
     }
   }
-  await setDoc(doc(db,'personal',id), {...p, id});
+  // Limpiar undefined del objeto persona antes de guardar
+  const pLimpio = Object.fromEntries(
+    Object.entries({...p, id}).filter(([,v]) => v !== undefined)
+  );
+  await setDoc(doc(db,'personal',id), pLimpio);
   return id;
 }
 
