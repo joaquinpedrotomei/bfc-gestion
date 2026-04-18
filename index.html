@@ -690,7 +690,7 @@ tr.group-hd:hover{background:var(--bg3)!important}
               <button onclick="calNextMes()">▶</button>
               <button class="btn btn-ghost btn-sm" onclick="calHoy()" style="margin-left:8px">Hoy</button>
             </div>
-            <div class="cal-grid" id="cal-dow-headers">
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:2px">
               <div class="cal-dow">Lun</div><div class="cal-dow">Mar</div><div class="cal-dow">Mié</div>
               <div class="cal-dow">Jue</div><div class="cal-dow">Vie</div><div class="cal-dow">Sáb</div><div class="cal-dow">Dom</div>
             </div>
@@ -701,7 +701,7 @@ tr.group-hd:hover{background:var(--bg3)!important}
             <div class="cal-day-detail" id="cal-day-detail">
               <h4 id="cal-det-titulo">Seleccioná un día</h4>
               <div id="cal-det-items"><p style="font-size:12px;color:var(--txt3)">Hacé click en un día para ver sus eventos.</p></div>
-              <button class="btn btn-ghost btn-sm" style="margin-top:10px;width:100%" id="cal-det-add-btn" onclick="openMoCalEvento()" style="display:none">+ Agregar en este día</button>
+              <button class="btn btn-ghost btn-sm" style="margin-top:10px;width:100%" id="cal-det-add-btn" onclick="openMoCalEvento()">+ Agregar en este día</button>
             </div>
             <div class="cal-proj">
               <h4>Proyección del mes</h4>
@@ -2691,13 +2691,15 @@ function renderCalProj(prefixMes, saldoInicial){
 
   const cont=document.getElementById('cal-proj-rows');
   if(!cont) return;
-  cont.innerHTML=filas.map(f=>{
-    const esFinal=f.tipo==='final'||f.tipo==='saldo';
-    const color=f.tipo==='ing'?'var(--green)':f.tipo==='egr'||f.tipo==='ord'?'var(--red)':f.tipo==='final'?(f.monto>=0?'var(--green)':'var(--red)'):'var(--txt)';
-    const prefix=f.tipo==='ing'?'+':f.tipo==='egr'||f.tipo==='ord'?'-':'';
+  cont.innerHTML=filas.map(fila=>{
+    const esFinal=fila.tipo==='final'||fila.tipo==='saldo';
+    const color=fila.tipo==='ing'?'var(--green)':fila.tipo==='egr'||fila.tipo==='ord'?'var(--red)':fila.tipo==='final'?(fila.monto>=0?'var(--green)':'var(--red)'):'var(--txt)';
+    const prefix=fila.tipo==='ing'?'+':fila.tipo==='egr'||fila.tipo==='ord'?'-':'';
+    const monto=fila.tipo==='saldo'||fila.tipo==='final'?fila.monto:fila.monto;
+    const label=fila.label.length>22?fila.label.slice(0,22)+'…':fila.label;
     return`<div class="cal-proj-row" ${esFinal?'style="border-top:2px solid var(--border);padding-top:8px;margin-top:4px"':''}>
-      <span style="${esFinal?'font-weight:700':'font-size:11px'}">${x(f.label.length>22?f.label.slice(0,22)+'…':f.label)}</span>
-      <span class="cal-proj-saldo" style="color:${color}">${prefix}${f(Math.abs(f.tipo==='saldo'||f.tipo==='final'?f.monto:f.monto))}</span>
+      <span style="${esFinal?'font-weight:700':'font-size:11px'}">${x(label)}</span>
+      <span class="cal-proj-saldo" style="color:${color}">${prefix}${f(Math.abs(monto))}</span>
     </div>`;
   }).join('');
 }
