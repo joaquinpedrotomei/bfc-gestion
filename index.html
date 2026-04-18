@@ -273,6 +273,39 @@ tr.group-hd:hover{background:var(--bg3)!important}
 .lov.show{display:flex}.sp{width:32px;height:32px;border:3px solid var(--border2);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:640px){.fg{grid-template-columns:1fr}.charts{grid-template-columns:1fr}.ficha-g{grid-template-columns:1fr}}
+
+/* ── CALENDARIO ── */
+.cal-nav{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.cal-nav h3{font-size:18px;font-weight:700;color:var(--txt);min-width:180px;text-align:center}
+.cal-nav button{padding:6px 14px;border:1.5px solid var(--border2);background:#fff;border-radius:6px;cursor:pointer;font-size:14px;color:var(--txt2);transition:all .15s}
+.cal-nav button:hover{border-color:var(--red);color:var(--red)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:20px}
+.cal-dow{text-align:center;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--txt3);padding:6px 0}
+.cal-day{min-height:90px;background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:6px;cursor:pointer;transition:all .15s;position:relative}
+.cal-day:hover{border-color:var(--red);box-shadow:0 2px 8px rgba(200,16,46,.1)}
+.cal-day.today{border-color:var(--blue);background:var(--blue-lt)}
+.cal-day.other-month{background:var(--bg2);opacity:.5}
+.cal-day.has-events{border-color:var(--border2)}
+.cal-day-num{font-size:12px;font-weight:700;color:var(--txt3);margin-bottom:4px}
+.cal-day.today .cal-day-num{color:var(--blue);font-size:13px}
+.cal-event{font-size:10px;font-weight:600;padding:2px 5px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.cal-ev-ing{background:var(--green-lt);color:var(--green)}
+.cal-ev-egr{background:var(--red-lt);color:var(--red)}
+.cal-ev-ord{background:var(--amber-lt);color:var(--amber)}
+.cal-ev-man{background:var(--blue-lt);color:var(--blue)}
+.cal-ev-more{font-size:10px;color:var(--txt3);margin-top:1px}
+.cal-sidebar{width:320px;flex-shrink:0}
+.cal-day-detail{background:#fff;border:1px solid var(--border);border-radius:8px;padding:16px;box-shadow:var(--shadow)}
+.cal-day-detail h4{font-size:14px;font-weight:700;color:var(--txt);margin-bottom:12px}
+.cal-det-item{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+.cal-det-item:last-child{border-bottom:none}
+.cal-det-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.cal-proj{background:#fff;border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:14px;box-shadow:var(--shadow)}
+.cal-proj h4{font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--txt3);margin-bottom:12px}
+.cal-proj-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:12px;border-bottom:1px solid var(--border)}
+.cal-proj-row:last-child{border-bottom:none;font-weight:700;font-size:13px}
+.cal-proj-row span:first-child{color:var(--txt2)}
+.cal-proj-saldo{font-family:var(--mono);font-weight:700}
 </style>
 </head>
 <body>
@@ -625,11 +658,66 @@ tr.group-hd:hover{background:var(--bg3)!important}
     <div class="section-panel" id="sec-cont">
       <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border);flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm cont-tab active" data-cont="transacciones" onclick="switchCont('transacciones')">Transacciones</button>
+        <button class="btn btn-ghost btn-sm cont-tab" data-cont="calendario" onclick="switchCont('calendario')">📅 Calendario</button>
         <button class="btn btn-ghost btn-sm cont-tab" data-cont="proveedores" onclick="switchCont('proveedores')">Proveedores</button>
         <button class="btn btn-ghost btn-sm cont-tab" data-cont="ordenes" onclick="switchCont('ordenes')">Órdenes de Pago</button>
         <button class="btn btn-ghost btn-sm cont-tab" data-cont="sponsors" onclick="switchCont('sponsors')">Sponsors</button>
         <button class="btn btn-ghost btn-sm cont-tab" data-cont="tipos" onclick="switchCont('tipos')">Tipos de Movimiento</button>
         <button class="btn btn-ghost btn-sm cont-tab" data-cont="resumen" onclick="switchCont('resumen')">Resumen Mensual</button>
+      </div>
+
+      <!-- CALENDARIO -->
+      <div class="cont-panel" id="cont-calendario">
+        <div class="ph">
+          <div><h2>Calendario Financiero</h2><p>Ingresos, egresos y órdenes programados — proyección de saldo</p></div>
+          <div class="ph-actions">
+            <button class="btn btn-primary" onclick="openMoCalEvento()">+ Agregar evento</button>
+          </div>
+        </div>
+        <!-- Proyección de saldo -->
+        <div class="stats" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));margin-bottom:16px">
+          <div class="sc green"><div class="lbl">Saldo Actual (Caja)</div><div class="val" id="cal-saldo-hoy">—</div></div>
+          <div class="sc blue"><div class="lbl">Ingresos Programados</div><div class="val" id="cal-ing-prog">—</div><div class="sub" id="cal-ing-prog-sub">este mes</div></div>
+          <div class="sc red"><div class="lbl">Egresos Programados</div><div class="val" id="cal-egr-prog">—</div><div class="sub" id="cal-egr-prog-sub">este mes</div></div>
+          <div class="sc purple"><div class="lbl">Saldo Proyectado</div><div class="val" id="cal-saldo-proy">—</div><div class="sub" id="cal-saldo-proy-sub">fin de mes</div></div>
+        </div>
+        <div style="display:flex;gap:16px;align-items:flex-start">
+          <!-- Calendario -->
+          <div style="flex:1;min-width:0">
+            <div class="cal-nav">
+              <button onclick="calPrevMes()">◀</button>
+              <h3 id="cal-titulo">—</h3>
+              <button onclick="calNextMes()">▶</button>
+              <button class="btn btn-ghost btn-sm" onclick="calHoy()" style="margin-left:8px">Hoy</button>
+            </div>
+            <div class="cal-grid" id="cal-dow-headers">
+              <div class="cal-dow">Lun</div><div class="cal-dow">Mar</div><div class="cal-dow">Mié</div>
+              <div class="cal-dow">Jue</div><div class="cal-dow">Vie</div><div class="cal-dow">Sáb</div><div class="cal-dow">Dom</div>
+            </div>
+            <div class="cal-grid" id="cal-grid"></div>
+          </div>
+          <!-- Sidebar: detalle del día + proyección -->
+          <div class="cal-sidebar">
+            <div class="cal-day-detail" id="cal-day-detail">
+              <h4 id="cal-det-titulo">Seleccioná un día</h4>
+              <div id="cal-det-items"><p style="font-size:12px;color:var(--txt3)">Hacé click en un día para ver sus eventos.</p></div>
+              <button class="btn btn-ghost btn-sm" style="margin-top:10px;width:100%" id="cal-det-add-btn" onclick="openMoCalEvento()" style="display:none">+ Agregar en este día</button>
+            </div>
+            <div class="cal-proj">
+              <h4>Proyección del mes</h4>
+              <div id="cal-proj-rows"></div>
+            </div>
+            <div style="margin-top:12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px">
+              <p style="font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--txt3);margin-bottom:8px">Leyenda</p>
+              <div style="display:flex;flex-direction:column;gap:5px">
+                <div style="display:flex;align-items:center;gap:6px;font-size:11px"><span class="cal-event cal-ev-ing" style="padding:2px 8px">▲ Ingreso programado</span></div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:11px"><span class="cal-event cal-ev-egr" style="padding:2px 8px">▼ Egreso programado</span></div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:11px"><span class="cal-event cal-ev-ord" style="padding:2px 8px">💳 Orden de pago</span></div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:11px"><span class="cal-event cal-ev-man" style="padding:2px 8px">📌 Evento manual</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- TRANSACCIONES -->
@@ -894,6 +982,34 @@ tr.group-hd:hover{background:var(--bg3)!important}
       </div>
     </div>
     <div class="mo-ft"><button class="btn btn-ghost" onclick="closeMoOrden()">Cancelar</button><button class="btn btn-primary" onclick="saveOrden()">Guardar Orden</button></div>
+  </div>
+</div>
+
+<!-- Modal Evento Calendario -->
+<div class="mo-overlay" id="mo-cal-evento">
+  <div class="mo" style="max-width:440px">
+    <div class="mo-hd"><h3 id="mo-calev-title">Nuevo Evento</h3><span class="mo-x" onclick="closeMoCalEvento()">×</span></div>
+    <div class="mo-bd">
+      <input type="hidden" id="calev-id">
+      <div class="fg">
+        <div class="fg-row ff"><label>Título *</label><input id="calev-titulo" type="text" placeholder="Ej: Cobro de cuotas, Vencimiento alquiler…"></div>
+        <div class="fg-row"><label>Fecha *</label><input id="calev-fecha" type="date"></div>
+        <div class="fg-row"><label>Tipo</label>
+          <select id="calev-tipo">
+            <option value="man">📌 Recordatorio / Info</option>
+            <option value="ing">▲ Ingreso esperado</option>
+            <option value="egr">▼ Egreso esperado</option>
+          </select>
+        </div>
+        <div class="fg-row" id="calev-monto-wrap"><label>Monto estimado ($)</label><input id="calev-monto" type="number" min="0" placeholder="0 (opcional)"></div>
+        <div class="fg-row ff"><label>Descripción</label><textarea id="calev-desc" style="min-height:56px" placeholder="Detalle adicional…"></textarea></div>
+      </div>
+    </div>
+    <div class="mo-ft">
+      <button class="btn btn-danger btn-sm" id="calev-del-btn" style="display:none;margin-right:auto" onclick="eliminarCalEvento()">Eliminar</button>
+      <button class="btn btn-ghost" onclick="closeMoCalEvento()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveCalEvento()">Guardar</button>
+    </div>
   </div>
 </div>
 
@@ -2307,6 +2423,7 @@ function switchCont(tab){
   document.querySelectorAll('.cont-tab').forEach(b=>b.classList.toggle('active',b.dataset.cont===tab));
   document.querySelectorAll('.cont-panel').forEach(p=>p.classList.toggle('active',p.id==='cont-'+tab));
   if(tab==='transacciones') renderTransacciones();
+  if(tab==='calendario'){ S.calEventos=null; renderCalendario(); }
   if(tab==='sponsors') renderSponsors();
   if(tab==='tipos') renderTiposTabla();
   if(tab==='resumen') renderResumen();
@@ -2422,6 +2539,250 @@ async function exportSnap(snapId){
   XLSX.writeFile(wb,`BFC_Snapshot_${snap.fechaDisplay.replace(/\//g,'-')}.xlsx`);
 }
 window.exportSnap = exportSnap;
+
+// ── CALENDARIO FINANCIERO ──
+let _calYear  = new Date().getFullYear();
+let _calMonth = new Date().getMonth(); // 0-based
+let _calDiaSeleccionado = null;
+let _calEventosFecha = {}; // cache: 'YYYY-MM-DD' -> array de eventos
+
+// Firestore: eventos manuales
+async function fsGetCalEventos(){ const s=await getDocs(collection(db,'cal_eventos')); return s.docs.map(d=>({id:d.id,...d.data()})); }
+async function fsSaveCalEvento(e){ const id=e.id||autoId(); await setDoc(doc(db,'cal_eventos',id),{...e,id}); return id; }
+async function fsDeleteCalEvento(id){ await deleteDoc(doc(db,'cal_eventos',id)); }
+
+function calHoy(){ _calYear=new Date().getFullYear(); _calMonth=new Date().getMonth(); renderCalendario(); }
+function calPrevMes(){ _calMonth--; if(_calMonth<0){_calMonth=11;_calYear--;} renderCalendario(); }
+function calNextMes(){ _calMonth++; if(_calMonth>11){_calMonth=0;_calYear++;} renderCalendario(); }
+window.calHoy=calHoy; window.calPrevMes=calPrevMes; window.calNextMes=calNextMes;
+
+function buildCalEventos(){
+  // Construir mapa fecha->eventos a partir de todas las fuentes
+  const evs = {};
+  const add = (fecha, ev) => { if(!evs[fecha]) evs[fecha]=[]; evs[fecha].push(ev); };
+
+  // 1. Transacciones programadas o pendientes
+  (S.transacciones||[]).forEach(t=>{
+    const fecha = t.estadoPago==='Programado'&&t.fechaPago ? t.fechaPago : (t.estadoPago==='Pendiente'&&t.fechaPago ? t.fechaPago : null);
+    if(!fecha) return;
+    add(fecha,{tipo:t.clase==='Ingreso'?'ing':'egr', titulo:t.tipoNombre||t.descripcion||'Movimiento', monto:t.monto||0, id:t.id, fuente:'trans'});
+  });
+
+  // 2. Órdenes de pago pendientes
+  (S.ordenes||[]).forEach(o=>{
+    if(o.estado==='Pagado') return;
+    const fecha=o.fecha; if(!fecha) return;
+    const desc=(o.items||[]).map(i=>i.proveedorNombre||i.descripcion||'—').slice(0,2).join(', ')+(o.items?.length>2?'…':'');
+    add(fecha,{tipo:'ord', titulo:`Orden: ${desc}`, monto:o.total||0, id:o.id, fuente:'orden'});
+  });
+
+  // 3. Eventos manuales
+  (S.calEventos||[]).forEach(e=>{
+    if(!e.fecha) return;
+    add(e.fecha,{tipo:e.tipo||'man', titulo:e.titulo||'Evento', monto:e.monto||0, id:e.id, fuente:'manual', desc:e.descripcion||''});
+  });
+
+  return evs;
+}
+
+async function renderCalendario(){
+  // Cargar eventos manuales si no están
+  if(!S.calEventos) { try{ S.calEventos=await fsGetCalEventos(); }catch(e){ S.calEventos=[]; } }
+
+  const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  document.getElementById('cal-titulo').textContent=`${MESES[_calMonth]} ${_calYear}`;
+
+  _calEventosFecha = buildCalEventos();
+
+  // Stats de proyección
+  const hoy=new Date();
+  const prefixMes=`${_calYear}-${String(_calMonth+1).padStart(2,'0')}`;
+  const caja=S.caja||{};
+  const saldoHoy=(caja.santander||0)+(caja.mlDisp||0)+(caja.efectivo||0);
+  let ingProg=0, egrProg=0;
+  Object.entries(_calEventosFecha).forEach(([fecha,evs])=>{
+    if(!fecha.startsWith(prefixMes)) return;
+    evs.forEach(e=>{ if(e.tipo==='ing') ingProg+=e.monto; else if(e.tipo==='egr'||e.tipo==='ord') egrProg+=e.monto; });
+  });
+  const saldoProy=saldoHoy+ingProg-egrProg;
+  st('cal-saldo-hoy',f(saldoHoy));
+  st('cal-ing-prog',f(ingProg)); st('cal-ing-prog-sub',`${MESES[_calMonth].toLowerCase()}`);
+  st('cal-egr-prog',f(egrProg)); st('cal-egr-prog-sub',`${MESES[_calMonth].toLowerCase()}`);
+  const spEl=document.getElementById('cal-saldo-proy');
+  spEl.textContent=f(saldoProy); spEl.style.color=saldoProy>=0?'var(--green)':'var(--red)';
+  st('cal-saldo-proy-sub',saldoProy>=0?'superávit proyectado':'déficit proyectado');
+
+  // Proyección acumulada del mes en sidebar
+  renderCalProj(prefixMes, saldoHoy);
+
+  // Construir grilla
+  const grid=document.getElementById('cal-grid');
+  grid.innerHTML='';
+
+  const primerDia=new Date(_calYear,_calMonth,1);
+  const ultimoDia=new Date(_calYear,_calMonth+1,0);
+  // Ajustar para que semana empiece lunes (0=lunes)
+  let startDow=(primerDia.getDay()+6)%7; // lunes=0
+
+  const todayStr=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
+
+  // Días del mes anterior
+  for(let i=0;i<startDow;i++){
+    const d=new Date(_calYear,_calMonth,1-startDow+i);
+    const cell=document.createElement('div');
+    cell.className='cal-day other-month';
+    cell.innerHTML=`<div class="cal-day-num">${d.getDate()}</div>`;
+    grid.appendChild(cell);
+  }
+
+  // Días del mes actual
+  for(let d=1;d<=ultimoDia.getDate();d++){
+    const fechaStr=`${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const evs=_calEventosFecha[fechaStr]||[];
+    const cell=document.createElement('div');
+    cell.className='cal-day'+(fechaStr===todayStr?' today':'')+(evs.length?' has-events':'');
+    cell.dataset.fecha=fechaStr;
+    if(_calDiaSeleccionado===fechaStr) cell.style.outline='2px solid var(--blue)';
+
+    let html=`<div class="cal-day-num">${d}</div>`;
+    const mostrar=evs.slice(0,3);
+    mostrar.forEach(e=>{
+      const cls=`cal-ev-${e.tipo}`;
+      const icon=e.tipo==='ing'?'▲':e.tipo==='egr'?'▼':e.tipo==='ord'?'💳':'📌';
+      html+=`<div class="cal-event ${cls}" title="${x(e.titulo)}">${icon} ${x(e.titulo.length>14?e.titulo.slice(0,14)+'…':e.titulo)}</div>`;
+    });
+    if(evs.length>3) html+=`<div class="cal-ev-more">+${evs.length-3} más</div>`;
+
+    cell.innerHTML=html;
+    cell.addEventListener('click',()=>seleccionarDia(fechaStr));
+    grid.appendChild(cell);
+  }
+
+  // Días del mes siguiente para completar la grilla
+  const totalCells=startDow+ultimoDia.getDate();
+  const resto=totalCells%7===0?0:7-(totalCells%7);
+  for(let i=1;i<=resto;i++){
+    const cell=document.createElement('div');
+    cell.className='cal-day other-month';
+    cell.innerHTML=`<div class="cal-day-num">${i}</div>`;
+    grid.appendChild(cell);
+  }
+}
+window.renderCalendario = renderCalendario;
+
+function renderCalProj(prefixMes, saldoInicial){
+  // Acumular eventos ordenados por fecha
+  const eventos=[];
+  Object.entries(_calEventosFecha).forEach(([fecha,evs])=>{
+    if(!fecha.startsWith(prefixMes)) return;
+    evs.forEach(e=>eventos.push({fecha,tipo:e.tipo,monto:e.monto,titulo:e.titulo}));
+  });
+  eventos.sort((a,b)=>a.fecha.localeCompare(b.fecha));
+
+  let saldo=saldoInicial;
+  const filas=[{label:'Saldo inicial',monto:saldo,tipo:'saldo'}];
+  eventos.forEach(e=>{
+    if(e.tipo==='ing') saldo+=e.monto;
+    else if(e.tipo==='egr'||e.tipo==='ord') saldo-=e.monto;
+    else return; // recordatorios no afectan
+    filas.push({label:e.titulo,monto:e.tipo==='ing'?e.monto:-e.monto,tipo:e.tipo,saldo});
+  });
+  filas.push({label:'Saldo proyectado fin de mes',monto:saldo,tipo:'final'});
+
+  const cont=document.getElementById('cal-proj-rows');
+  if(!cont) return;
+  cont.innerHTML=filas.map(f=>{
+    const esFinal=f.tipo==='final'||f.tipo==='saldo';
+    const color=f.tipo==='ing'?'var(--green)':f.tipo==='egr'||f.tipo==='ord'?'var(--red)':f.tipo==='final'?(f.monto>=0?'var(--green)':'var(--red)'):'var(--txt)';
+    const prefix=f.tipo==='ing'?'+':f.tipo==='egr'||f.tipo==='ord'?'-':'';
+    return`<div class="cal-proj-row" ${esFinal?'style="border-top:2px solid var(--border);padding-top:8px;margin-top:4px"':''}>
+      <span style="${esFinal?'font-weight:700':'font-size:11px'}">${x(f.label.length>22?f.label.slice(0,22)+'…':f.label)}</span>
+      <span class="cal-proj-saldo" style="color:${color}">${prefix}${f(Math.abs(f.tipo==='saldo'||f.tipo==='final'?f.monto:f.monto))}</span>
+    </div>`;
+  }).join('');
+}
+
+function seleccionarDia(fechaStr){
+  _calDiaSeleccionado=fechaStr;
+  // Re-renderizar el contorno seleccionado
+  document.querySelectorAll('.cal-day').forEach(c=>{
+    c.style.outline=c.dataset.fecha===fechaStr?'2px solid var(--blue)':'';
+  });
+  const evs=_calEventosFecha[fechaStr]||[];
+  const [y,m,d]=fechaStr.split('-');
+  const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  document.getElementById('cal-det-titulo').textContent=`${parseInt(d)} de ${MESES[parseInt(m)-1]}`;
+  const addBtn=document.getElementById('cal-det-add-btn');
+  if(addBtn){ addBtn.style.display=''; addBtn.onclick=()=>openMoCalEvento(null,fechaStr); }
+  const cont=document.getElementById('cal-det-items');
+  if(!evs.length){ cont.innerHTML='<p style="font-size:12px;color:var(--txt3)">Sin eventos en este día.</p>'; return; }
+  cont.innerHTML=evs.map(e=>{
+    const color=e.tipo==='ing'?'var(--green)':e.tipo==='egr'?'var(--red)':e.tipo==='ord'?'var(--amber)':'var(--blue)';
+    const icon=e.tipo==='ing'?'▲':e.tipo==='egr'?'▼':e.tipo==='ord'?'💳':'📌';
+    const montoStr=e.monto>0?`<span style="font-family:var(--mono);font-weight:700;color:${color}">${e.tipo==='egr'||e.tipo==='ord'?'-':'+'} ${f(e.monto)}</span>`:'';
+    const editBtn=e.fuente==='manual'?`<button class="btn btn-ghost btn-sm" style="margin-left:auto;padding:3px 8px;font-size:10px" onclick="openMoCalEvento('${e.id}')">Editar</button>`:'';
+    return`<div class="cal-det-item">
+      <div class="cal-det-dot" style="background:${color}"></div>
+      <div style="flex:1">
+        <div style="font-weight:600;color:var(--txt)">${icon} ${x(e.titulo)}</div>
+        ${e.desc?`<div style="color:var(--txt3);margin-top:2px">${x(e.desc)}</div>`:''}
+        ${montoStr}
+      </div>
+      ${editBtn}
+    </div>`;
+  }).join('');
+}
+window.seleccionarDia = seleccionarDia;
+
+// Modal evento manual
+function openMoCalEvento(id, fechaDefault){
+  const e=id?S.calEventos?.find(z=>z.id===id):null;
+  document.getElementById('mo-calev-title').textContent=e?'Editar Evento':'Nuevo Evento';
+  document.getElementById('calev-id').value=e?.id||'';
+  document.getElementById('calev-titulo').value=e?.titulo||'';
+  document.getElementById('calev-fecha').value=e?.fecha||fechaDefault||new Date().toISOString().slice(0,10);
+  document.getElementById('calev-tipo').value=e?.tipo||'man';
+  document.getElementById('calev-monto').value=e?.monto||'';
+  document.getElementById('calev-desc').value=e?.descripcion||'';
+  document.getElementById('calev-del-btn').style.display=e?'':'none';
+  document.getElementById('mo-cal-evento').classList.add('open');
+}
+window.openMoCalEvento = openMoCalEvento;
+window.closeMoCalEvento = ()=>document.getElementById('mo-cal-evento').classList.remove('open');
+
+async function saveCalEvento(){
+  const titulo=document.getElementById('calev-titulo').value.trim();
+  const fecha=document.getElementById('calev-fecha').value;
+  if(!titulo){toast('Título requerido',true);return;}
+  if(!fecha){toast('Fecha requerida',true);return;}
+  const ev={id:document.getElementById('calev-id').value||autoId(),titulo,fecha,tipo:document.getElementById('calev-tipo').value,monto:parseFloat(document.getElementById('calev-monto').value)||0,descripcion:document.getElementById('calev-desc').value};
+  load(true);
+  try{
+    await fsSaveCalEvento(ev);
+    S.calEventos=await fsGetCalEventos();
+    window.closeMoCalEvento();
+    await renderCalendario();
+    if(_calDiaSeleccionado) seleccionarDia(_calDiaSeleccionado);
+    toast('Evento guardado');
+  }catch(e){toast('Error',true);}
+  load(false);
+}
+window.saveCalEvento = saveCalEvento;
+
+async function eliminarCalEvento(){
+  const id=document.getElementById('calev-id').value;
+  if(!confirm('¿Eliminar este evento?')) return;
+  load(true);
+  try{
+    await fsDeleteCalEvento(id);
+    S.calEventos=await fsGetCalEventos();
+    window.closeMoCalEvento();
+    await renderCalendario();
+    toast('Eliminado');
+  }catch(e){toast('Error',true);}
+  load(false);
+}
+window.eliminarCalEvento = eliminarCalEvento;
 
 // ── HELPERS RENDER ──
 function renderBar(id,data,max,color=''){
