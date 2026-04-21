@@ -365,7 +365,7 @@ tr.group-hd:hover{background:var(--bg3)!important}
 
     <!-- ══════════════════ DASHBOARD ══════════════════ -->
     <div class="section-panel active" id="sec-dashboard">
-      <div class="ph"><div><h2>Dashboard General</h2><p>Resumen ejecutivo del club</p></div><div class="ph-actions"><button class="btn btn-secondary btn-sm" onclick="renderDashboard()">↺ Actualizar</button></div></div>
+      <div class="ph"><div><h2>Dashboard General</h2><p>Resumen ejecutivo del club</p></div><div class="ph-actions"><button class="btn btn-secondary btn-sm" onclick="renderDashboard()">↺ Actualizar</button><button class="btn btn-ghost btn-sm" onclick="exportPDFDashboard()">⬇ PDF</button></div></div>
 
       <div class="dash-section-title">Capital Humano</div>
       <div class="stats">
@@ -434,7 +434,7 @@ tr.group-hd:hover{background:var(--bg3)!important}
 
       <!-- PERSONAL -->
       <div class="ch-panel active" id="ch-personal">
-        <div class="ph"><div><h2>Personal</h2><p>Jugadores, cuerpo técnico y staff</p></div><div class="ph-actions"><button class="btn btn-secondary btn-sm" onclick="loadPersonal()">↺</button><button class="btn btn-primary" id="btn-nuevo-personal" onclick="openMoPersona()">+ Nuevo</button></div></div>
+        <div class="ph"><div><h2>Personal</h2><p>Jugadores, cuerpo técnico y staff</p></div><div class="ph-actions"><button class="btn btn-secondary btn-sm" onclick="loadPersonal()">↺</button><button class="btn btn-ghost btn-sm" onclick="exportPDFPersonal()">⬇ PDF</button><button class="btn btn-primary" id="btn-nuevo-personal" onclick="openMoPersona()">+ Nuevo</button></div></div>
         <!-- Sub-tabs Jugadores / Staff / Todos -->
         <div style="display:flex;gap:3px;margin-bottom:14px;background:var(--bg3);border-radius:8px;padding:4px;width:fit-content">
           <button class="pers-subtab active" data-psub="todos" onclick="switchPersonalSub('todos')" style="padding:6px 16px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--txt);box-shadow:var(--shadow);transition:all .15s">Todos</button>
@@ -589,7 +589,7 @@ tr.group-hd:hover{background:var(--bg3)!important}
 
       <!-- BALANCE FACTURACION -->
       <div class="ch-panel" id="ch-balance-ch">
-        <div class="ph"><div><h2>Balance Facturación</h2><p>Análisis por tipo de facturación</p></div><div class="ph-actions"><button class="btn btn-secondary btn-sm" onclick="renderBalance()">↺</button></div></div>
+        <div class="ph"><div><h2>Balance Facturación</h2><p>Análisis por tipo de facturación</p></div><div class="ph-actions"><button class="btn btn-secondary btn-sm" onclick="renderBalance()">↺</button><button class="btn btn-ghost btn-sm" onclick="exportPDFBalance()">⬇ PDF</button></div></div>
         <div class="stats" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
           <div class="sc red"><div class="lbl">Masa Total</div><div class="val" id="bal-total">—</div></div>
           <div class="sc amber"><div class="lbl">Con Factura</div><div class="val" id="bal-fac">—</div><div class="sub" id="bal-fac-pct">—</div></div>
@@ -724,6 +724,7 @@ tr.group-hd:hover{background:var(--bg3)!important}
         <div class="ph">
           <div><h2>Calendario Financiero</h2><p>Ingresos, egresos y órdenes programados — proyección de saldo</p></div>
           <div class="ph-actions">
+            <button class="btn btn-ghost btn-sm" onclick="exportPDFCalendario()">⬇ PDF</button>
             <button class="btn btn-primary" onclick="openMoCalEvento()">+ Agregar evento</button>
           </div>
         </div>
@@ -809,7 +810,7 @@ tr.group-hd:hover{background:var(--bg3)!important}
       <div class="cont-panel" id="cont-gastos-futuros">
         <div class="ph">
           <div><h2>Gastos Futuros</h2><p>Gastos proyectados o no confirmados — no afectan la contabilidad real</p></div>
-          <div class="ph-actions"><button class="btn btn-primary" onclick="openMoGastoFuturo()">+ Nuevo</button></div>
+          <div class="ph-actions"><button class="btn btn-ghost btn-sm" onclick="exportPDFGastosFuturos()">⬇ PDF</button><button class="btn btn-primary" onclick="openMoGastoFuturo()">+ Nuevo</button></div>
         </div>
         <div style="background:var(--amber-lt);border:1px solid var(--amber);border-radius:8px;padding:10px 16px;margin-bottom:16px;font-size:13px;color:var(--amber);display:flex;align-items:center;gap:8px">
           <span>💡</span><span>Estos gastos <strong>no se registran</strong> como transacciones reales. Son proyecciones para planificar. Cuando se confirmen, podés convertirlos en una transacción.</span>
@@ -845,7 +846,7 @@ tr.group-hd:hover{background:var(--bg3)!important}
 
       <!-- SPONSORS -->
       <div class="cont-panel" id="cont-sponsors">
-        <div class="ph"><div><h2>Sponsors</h2><p>Patrocinadores y sus aportes</p></div><div class="ph-actions"><button class="btn btn-primary" onclick="openMoSponsor()">+ Nuevo Sponsor</button></div></div>
+        <div class="ph"><div><h2>Sponsors</h2><p>Patrocinadores y sus aportes</p></div><div class="ph-actions"><button class="btn btn-ghost btn-sm" onclick="exportPDFSponsors()">⬇ PDF</button><button class="btn btn-primary" onclick="openMoSponsor()">+ Nuevo Sponsor</button></div></div>
         <div class="stats" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">
           <div class="sc green"><div class="lbl">Aporte Mensual Total</div><div class="val" id="sp-total">—</div></div>
           <div class="sc"><div class="lbl">Sponsors Activos</div><div class="val" id="sp-activos">—</div></div>
@@ -2393,6 +2394,9 @@ function renderOrdenes(){
       <td><span class="badge ${esPend?'b-egreso':'bactivo'}">${o.estado}</span></td>
       <td style="display:flex;gap:4px">
         ${esPend?`<button class="btn btn-success btn-sm" onclick="event.stopPropagation();marcarPagada('${o.id}')">✓ Pagar</button>`:''}
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();exportPDFOrden('${o.id}')">PDF</button>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();compartirOrden('${o.id}','wa')" title="WhatsApp">💬</button>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();compartirOrden('${o.id}','mail')" title="Email">✉</button>
         <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();eliminarOrden('${o.id}')">×</button>
       </td>
     </tr>`;
@@ -3243,6 +3247,292 @@ async function convertirGastoFuturo() {
   toast('Completá los datos faltantes y guardá la transacción');
 }
 window.convertirGastoFuturo = convertirGastoFuturo;
+
+// ══ EXPORTACIONES PDF ══
+
+const BFC_CSS = `
+  body{font-family:'Helvetica Neue',Arial,sans-serif;padding:32px;color:#1a1d23;font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  h1{font-size:20px;font-weight:700;color:#C8102E;margin-bottom:3px;letter-spacing:-.3px}
+  .sub{color:#8b93a5;font-size:11px;margin-bottom:18px}
+  .meta{display:flex;gap:20px;margin-bottom:18px;flex-wrap:wrap}
+  .meta-item{font-size:11px;color:#8b93a5}.meta-item strong{color:#1a1d23;margin-left:4px}
+  .stats-row{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+  .stat-box{border:1px solid #e2e5ea;border-radius:6px;padding:10px 14px;min-width:130px}
+  .stat-lbl{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8b93a5;margin-bottom:5px}
+  .stat-val{font-size:18px;font-weight:700;color:#1a1d23;font-family:'Courier New',monospace}
+  .stat-box.red{border-left:4px solid #C8102E}.stat-box.green{border-left:4px solid #16a34a}
+  .stat-box.blue{border-left:4px solid #2563eb}.stat-box.amber{border-left:4px solid #d97706}
+  table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px}
+  thead tr{background:#f4f5f7;border-bottom:2px solid #e2e5ea}
+  th{padding:8px 10px;text-align:left;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8b93a5}
+  th.r{text-align:right} td{padding:7px 10px;border-bottom:1px solid #e2e5ea;color:#4a5060}
+  td.r{text-align:right;font-family:'Courier New',monospace}
+  td.nm{color:#1a1d23;font-weight:600} td.mono{font-family:'Courier New',monospace;font-size:10px}
+  tr.group{background:#eef0f3} tr.group td{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8b93a5;padding:5px 10px}
+  .badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:9px;font-weight:700}
+  .b-ing{background:#f0fdf4;color:#16a34a}.b-egr{background:#fdf0f2;color:#C8102E}
+  .b-esc{background:rgba(200,16,46,.1);color:#C8102E}.b-amber{background:#fffbeb;color:#d97706}
+  .b-ok{background:#f0fdf4;color:#16a34a}.b-pend{background:#fffbeb;color:#d97706}
+  .b-gray{background:#eef0f3;color:#8b93a5}
+  .footer{margin-top:20px;padding-top:10px;border-top:1px solid #e2e5ea;font-size:9px;color:#8b93a5;display:flex;justify-content:space-between}
+  .section-title{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#8b93a5;margin:16px 0 8px;padding-bottom:5px;border-bottom:1px solid #e2e5ea}
+  @media print{button{display:none}a{display:none}}
+`;
+function pdfHeader(titulo, subtitulo=''){
+  return `<h1>${titulo}</h1><div class="sub">Barrancas Fútbol Club${subtitulo?' — '+subtitulo:''}</div><div class="meta"><div class="meta-item">Fecha<strong>${new Date().toLocaleDateString('es-AR')}</strong></div><div class="meta-item">Hora<strong>${new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}</strong></div></div>`;
+}
+function pdfOpen(html){
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BFC Gestión</title><style>${BFC_CSS}</style></head><body>${html}<div class="footer"><span>BFC Gestión — Barrancas Fútbol Club</span><span>Documento generado el ${new Date().toLocaleDateString('es-AR')}</span></div><script>window.onload=()=>{window.print();}<\/script></body></html>`);
+  w.document.close();
+}
+
+// ── PDF DASHBOARD ──
+function exportPDFDashboard(){
+  const activos=S.personal.filter(p=>p.estado==='Activo');
+  const masa=activos.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
+  const nUniq=new Set(activos.map(p=>p.nombre)).size;
+  const now=new Date(), prefix=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const transMes=S.transacciones.filter(t=>(t.fecha||'').startsWith(prefix));
+  const ingMes=transMes.filter(t=>t.clase==='Ingreso').reduce((s,t)=>s+(t.monto||0),0);
+  const egrMes=transMes.filter(t=>t.clase==='Egreso').reduce((s,t)=>s+(t.monto||0),0);
+  const balance=ingMes-egrMes;
+  const caja=S.caja||{};
+  const cajaTotal=(caja.santander||0)+(caja.mlDisp||0)+(caja.efectivo||0);
+  const spAct=S.sponsors.filter(s=>s.estado==='Activo');
+  const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  // Egresos por tipo
+  const egrPorTipo={};
+  transMes.filter(t=>t.clase==='Egreso').forEach(t=>{const n=t.tipoNombre||'Otro';egrPorTipo[n]=(egrPorTipo[n]||0)+(t.monto||0);});
+  const egr_rows=Object.entries(egrPorTipo).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td class="nm">${x(k)}</td><td class="r">${f(v)}</td><td class="r">${egrMes?Math.round(v/egrMes*100)+'%':'—'}</td></tr>`).join('');
+  const ingPorTipo={};
+  transMes.filter(t=>t.clase==='Ingreso').forEach(t=>{const n=t.tipoNombre||'Otro';ingPorTipo[n]=(ingPorTipo[n]||0)+(t.monto||0);});
+  const ing_rows=Object.entries(ingPorTipo).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td class="nm">${x(k)}</td><td class="r">${f(v)}</td><td class="r">${ingMes?Math.round(v/ingMes*100)+'%':'—'}</td></tr>`).join('');
+  const html=`${pdfHeader('Dashboard General',meses[now.getMonth()]+' '+now.getFullYear())}
+    <div class="section-title">Capital Humano</div>
+    <div class="stats-row">
+      <div class="stat-box red"><div class="stat-lbl">Masa Salarial</div><div class="stat-val">${f(masa)}</div></div>
+      <div class="stat-box"><div class="stat-lbl">Personal activo</div><div class="stat-val">${nUniq}</div></div>
+      <div class="stat-box"><div class="stat-lbl">Funciones</div><div class="stat-val">${activos.length}</div></div>
+    </div>
+    <div class="section-title">Fondos Disponibles</div>
+    <div class="stats-row">
+      <div class="stat-box green"><div class="stat-lbl">Santander</div><div class="stat-val">${f(caja.santander||0)}</div></div>
+      <div class="stat-box blue"><div class="stat-lbl">ML Disponible</div><div class="stat-val">${f(caja.mlDisp||0)}</div></div>
+      <div class="stat-box"><div class="stat-lbl">ML A acreditar</div><div class="stat-val">${f(caja.mlAcred||0)}</div></div>
+      <div class="stat-box amber"><div class="stat-lbl">Efectivo</div><div class="stat-val">${f(caja.efectivo||0)}</div></div>
+      <div class="stat-box ${cajaTotal>=0?'green':'red'}"><div class="stat-lbl">Total disponible</div><div class="stat-val">${f(cajaTotal)}</div></div>
+    </div>
+    <div class="section-title">Contabilidad — ${meses[now.getMonth()]}</div>
+    <div class="stats-row">
+      <div class="stat-box green"><div class="stat-lbl">Ingresos</div><div class="stat-val">${f(ingMes)}</div></div>
+      <div class="stat-box red"><div class="stat-lbl">Egresos</div><div class="stat-val">${f(egrMes)}</div></div>
+      <div class="stat-box ${balance>=0?'green':'red'}"><div class="stat-lbl">Balance neto</div><div class="stat-val">${f(balance)}</div></div>
+      <div class="stat-box amber"><div class="stat-lbl">Sponsors activos</div><div class="stat-val">${spAct.length}</div></div>
+    </div>
+    <div style="display:flex;gap:20px">
+      <div style="flex:1"><div class="section-title">Ingresos por tipo</div>
+        <table><thead><tr><th>Tipo</th><th class="r">Monto</th><th class="r">%</th></tr></thead><tbody>${ing_rows||'<tr><td colspan="3" style="text-align:center;color:#8b93a5">Sin movimientos</td></tr>'}</tbody></table>
+      </div>
+      <div style="flex:1"><div class="section-title">Egresos por tipo</div>
+        <table><thead><tr><th>Tipo</th><th class="r">Monto</th><th class="r">%</th></tr></thead><tbody>${egr_rows||'<tr><td colspan="3" style="text-align:center;color:#8b93a5">Sin movimientos</td></tr>'}</tbody></table>
+      </div>
+    </div>`;
+  pdfOpen(html);
+}
+window.exportPDFDashboard = exportPDFDashboard;
+
+// ── PDF PERSONAL ──
+function exportPDFPersonal(){
+  const sub=_personalSub;
+  const subtitulos={todos:'Todo el personal',jugadores:'Jugadores',staff:'Staff'};
+  const activos=S.personal.filter(p=>{
+    if(p.estado!=='Activo') return false;
+    const roles=Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[]);
+    if(sub==='jugadores'&&!roles.includes('Jugador')) return false;
+    if(sub==='staff'&&roles.includes('Jugador')&&roles.length===1) return false;
+    return true;
+  }).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const masa=activos.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
+  const esJug=sub!=='staff';
+  const thExtra=esJug?'<th>Posición</th><th>Escal.</th><th class="r">Bono</th>':'';
+  const rows=activos.map(p=>{
+    const roles=Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[]);
+    const cats=Array.isArray(p.categorias)?p.categorias:(p.categoria?[p.categoria]:[]);
+    const esJ=roles.includes('Jugador');
+    const extra=esJug?`<td>${x(p.posicion||'—')}</td><td>${p.escalafon?`<span class="badge b-esc">${p.escalafon}</span>`:'—'}</td><td class="r">${esJ?f(p.bono):'—'}</td>`:'';
+    return`<tr><td class="nm">${x(p.nombre)}</td><td>${x(roles.join(', ')||'—')}</td><td>${x(cats.join(', ')||'—')}</td>${extra}<td class="r">${f(p.basico)}</td><td class="r"><strong>${f((p.basico||0)+(esJ?p.bono||0:0))}</strong></td></tr>`;
+  }).join('');
+  const html=`${pdfHeader('Personal — '+subtitulos[sub])}
+    <div class="stats-row">
+      <div class="stat-box red"><div class="stat-lbl">Masa total</div><div class="stat-val">${f(masa)}</div></div>
+      <div class="stat-box"><div class="stat-lbl">Personas</div><div class="stat-val">${new Set(activos.map(p=>p.nombre)).size}</div></div>
+      <div class="stat-box"><div class="stat-lbl">Funciones</div><div class="stat-val">${activos.length}</div></div>
+    </div>
+    <table><thead><tr><th>Nombre</th><th>Rol</th><th>Categoría</th>${thExtra}<th class="r">Básico</th><th class="r">Total</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="8" style="text-align:center">Sin registros</td></tr>'}</tbody>
+    <tfoot><tr style="background:#f4f5f7"><td colspan="${esJug?5:3}" style="padding:8px 10px;font-weight:700;font-size:11px">TOTAL</td><td></td><td class="r" style="padding:8px 10px;font-weight:700;font-family:\'Courier New\',monospace">${f(masa)}</td></tr></tfoot>
+    </table>`;
+  pdfOpen(html);
+}
+window.exportPDFPersonal = exportPDFPersonal;
+
+// ── PDF CALENDARIO ──
+function exportPDFCalendario(){
+  const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const mes=MESES[_calMonth]+' '+_calYear;
+  const prefixMes=`${_calYear}-${String(_calMonth+1).padStart(2,'0')}`;
+  const caja=S.caja||{};
+  const saldoHoy=(caja.santander||0)+(caja.mlDisp||0)+(caja.efectivo||0);
+  const evsPorFecha=_calEventosFecha||{};
+  let ingProg=0,egrProg=0;
+  const allEvs=[];
+  Object.entries(evsPorFecha).filter(([f])=>f.startsWith(prefixMes)).forEach(([fecha,evs])=>{
+    evs.forEach(e=>{ allEvs.push({fecha,...e}); if(e.tipo==='ing')ingProg+=e.monto; else if(e.tipo==='egr'||e.tipo==='ord')egrProg+=e.monto; });
+  });
+  allEvs.sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const rows=allEvs.map(e=>{
+    const badge=e.tipo==='ing'?'<span class="badge b-ing">▲ Ingreso</span>':e.tipo==='egr'?'<span class="badge b-egr">▼ Egreso</span>':e.tipo==='ord'?'<span class="badge b-amber">💳 Orden</span>':'<span class="badge b-gray">📌 Manual</span>';
+    return`<tr><td class="mono">${e.fecha}</td><td>${badge}</td><td class="nm">${x(e.titulo)}</td><td class="r">${e.monto?f(e.monto):'—'}</td></tr>`;
+  }).join('');
+  const html=`${pdfHeader('Calendario Financiero',mes)}
+    <div class="stats-row">
+      <div class="stat-box green"><div class="stat-lbl">Saldo actual</div><div class="stat-val">${f(saldoHoy)}</div></div>
+      <div class="stat-box green"><div class="stat-lbl">Ingresos prog.</div><div class="stat-val">${f(ingProg)}</div></div>
+      <div class="stat-box red"><div class="stat-lbl">Egresos prog.</div><div class="stat-val">${f(egrProg)}</div></div>
+      <div class="stat-box ${saldoHoy+ingProg-egrProg>=0?'green':'red'}"><div class="stat-lbl">Saldo proyectado</div><div class="stat-val">${f(saldoHoy+ingProg-egrProg)}</div></div>
+    </div>
+    <div class="section-title">Eventos del mes</div>
+    <table><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th class="r">Monto</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="4" style="text-align:center;color:#8b93a5">Sin eventos programados</td></tr>'}</tbody></table>`;
+  pdfOpen(html);
+}
+window.exportPDFCalendario = exportPDFCalendario;
+
+// ── PDF BALANCE FACTURACIÓN ──
+function exportPDFBalance(){
+  const activos=S.personal.filter(p=>p.estado==='Activo');
+  const conFac=activos.filter(p=>p.factura==='Si'), sinFac=activos.filter(p=>p.factura!=='Si');
+  const masaTotal=activos.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
+  const masaFac=conFac.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
+  const masaNoFac=sinFac.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
+  const pctFac=masaTotal?Math.round(masaFac/masaTotal*100):0;
+  const rowsFac=conFac.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(p=>{
+    const roles=Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[]);
+    return`<tr><td class="nm">${x(p.nombre)}</td><td>${x(roles.join(', ')||'—')}</td><td class="r">${f(p.basico)}</td><td class="r">${f(p.bono)}</td><td class="r"><strong>${f((p.basico||0)+(p.bono||0))}</strong></td></tr>`;
+  }).join('');
+  const rowsNoFac=sinFac.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(p=>{
+    const roles=Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[]);
+    return`<tr><td class="nm">${x(p.nombre)}</td><td>${x(roles.join(', ')||'—')}</td><td class="r">${f(p.basico)}</td><td class="r">${f(p.bono)}</td><td class="r"><strong>${f((p.basico||0)+(p.bono||0))}</strong></td></tr>`;
+  }).join('');
+  const html=`${pdfHeader('Balance de Facturación')}
+    <div class="stats-row">
+      <div class="stat-box red"><div class="stat-lbl">Masa total</div><div class="stat-val">${f(masaTotal)}</div></div>
+      <div class="stat-box amber"><div class="stat-lbl">Con factura</div><div class="stat-val">${f(masaFac)} <small style="font-size:11px">(${pctFac}%)</small></div></div>
+      <div class="stat-box"><div class="stat-lbl">Sin factura</div><div class="stat-val">${f(masaNoFac)} <small style="font-size:11px">(${100-pctFac}%)</small></div></div>
+    </div>
+    <div class="section-title">Con Factura — ${conFac.length} funciones</div>
+    <table><thead><tr><th>Nombre</th><th>Rol</th><th class="r">Básico</th><th class="r">Bono</th><th class="r">Total</th></tr></thead>
+    <tbody>${rowsFac||'<tr><td colspan="5" style="text-align:center;color:#8b93a5">Sin registros</td></tr>'}</tbody>
+    <tfoot><tr style="background:#f4f5f7"><td colspan="4" style="padding:7px 10px;font-weight:700">SUBTOTAL</td><td class="r" style="padding:7px 10px;font-weight:700;font-family:monospace">${f(masaFac)}</td></tr></tfoot></table>
+    <div class="section-title">Sin Factura — ${sinFac.length} funciones</div>
+    <table><thead><tr><th>Nombre</th><th>Rol</th><th class="r">Básico</th><th class="r">Bono</th><th class="r">Total</th></tr></thead>
+    <tbody>${rowsNoFac||'<tr><td colspan="5" style="text-align:center;color:#8b93a5">Sin registros</td></tr>'}</tbody>
+    <tfoot><tr style="background:#f4f5f7"><td colspan="4" style="padding:7px 10px;font-weight:700">SUBTOTAL</td><td class="r" style="padding:7px 10px;font-weight:700;font-family:monospace">${f(masaNoFac)}</td></tr></tfoot></table>`;
+  pdfOpen(html);
+}
+window.exportPDFBalance = exportPDFBalance;
+
+// ── PDF SPONSORS ──
+function exportPDFSponsors(){
+  const activos=S.sponsors.filter(s=>s.estado==='Activo');
+  const inactivos=S.sponsors.filter(s=>s.estado!=='Activo');
+  const totalMes=activos.reduce((s,sp)=>s+(sp.monto||0),0);
+  const rows=S.sponsors.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(sp=>`<tr>
+    <td class="nm">${x(sp.nombre)}</td>
+    <td>${sp.estado==='Activo'?'<span class="badge b-ok">Activo</span>':'<span class="badge b-gray">Inactivo</span>'}</td>
+    <td class="r">${f(sp.monto)}</td>
+    <td>${x(sp.medio||'—')}</td>
+    <td>${x(sp.vencimiento||'—')}</td>
+    <td style="font-size:10px">${x(sp.beneficios||'—')}</td>
+  </tr>`).join('');
+  const html=`${pdfHeader('Sponsors')}
+    <div class="stats-row">
+      <div class="stat-box green"><div class="stat-lbl">Aporte mensual</div><div class="stat-val">${f(totalMes)}</div></div>
+      <div class="stat-box"><div class="stat-lbl">Activos</div><div class="stat-val">${activos.length}</div></div>
+      <div class="stat-box"><div class="stat-lbl">Inactivos</div><div class="stat-val">${inactivos.length}</div></div>
+      <div class="stat-box amber"><div class="stat-lbl">Aporte anual est.</div><div class="stat-val">${f(totalMes*12)}</div></div>
+    </div>
+    <table><thead><tr><th>Nombre</th><th>Estado</th><th class="r">Monto/mes</th><th>Medio</th><th>Vencimiento</th><th>Beneficios</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:#8b93a5">Sin sponsors</td></tr>'}</tbody></table>`;
+  pdfOpen(html);
+}
+window.exportPDFSponsors = exportPDFSponsors;
+
+// ── PDF GASTOS FUTUROS ──
+function exportPDFGastosFuturos(){
+  const gfs=S.gastosFuturos||[];
+  const total=gfs.filter(g=>g.estado!=='Descartado').reduce((s,g)=>s+(g.monto||0),0);
+  const rows=gfs.map(g=>{
+    const badge=g.estado==='Confirmado'?'<span class="badge b-ok">Confirmado</span>':g.estado==='Descartado'?'<span class="badge b-gray">Descartado</span>':'<span class="badge b-amber">Sin confirmar</span>';
+    return`<tr><td class="nm">${x(g.concepto||'—')}</td><td class="r">${g.monto?f(g.monto):'—'}</td><td>${x(g.periodo||'—')}</td><td>${x(g.pagos||'—')}</td><td>${x(g.area||'—')}</td><td>${badge}</td><td style="font-size:10px;color:#8b93a5">${x(g.notas||'—')}</td></tr>`;
+  }).join('');
+  const html=`${pdfHeader('Gastos Futuros')}
+    <div class="stats-row">
+      <div class="stat-box amber"><div class="stat-lbl">Total proyectado</div><div class="stat-val">${f(total)}</div></div>
+      <div class="stat-box"><div class="stat-lbl">Sin confirmar</div><div class="stat-val">${gfs.filter(g=>g.estado==='Proyectado').length}</div></div>
+      <div class="stat-box green"><div class="stat-lbl">Confirmados</div><div class="stat-val">${gfs.filter(g=>g.estado==='Confirmado').length}</div></div>
+    </div>
+    <table><thead><tr><th>Concepto</th><th class="r">Monto est.</th><th>Período</th><th>Pagos</th><th>Área</th><th>Estado</th><th>Notas</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="7" style="text-align:center;color:#8b93a5">Sin gastos futuros</td></tr>'}</tbody></table>`;
+  pdfOpen(html);
+}
+window.exportPDFGastosFuturos = exportPDFGastosFuturos;
+
+// ── PDF + COMPARTIR ORDEN DE PAGO ──
+function buildOrdenHTML(orden){
+  const items=orden.items||[];
+  const total=orden.total||0;
+  const rows=items.map(i=>`<tr>
+    <td class="nm">${x(i.proveedorNombre||i.descripcion||'—')}</td>
+    <td class="mono">${x(i.cbu||'—')}</td>
+    <td class="mono">${x(i.alias||'—')}</td>
+    <td>${x(i.medio||'—')}</td>
+    <td class="r"><strong>${f(i.monto||0)}</strong></td>
+  </tr>`).join('');
+  return `${pdfHeader('Orden de Pago','Fecha: '+orden.fecha)}
+    <div class="stats-row">
+      <div class="stat-box ${orden.estado==='Pagado'?'green':'amber'}"><div class="stat-lbl">Estado</div><div class="stat-val" style="font-size:14px">${orden.estado}</div></div>
+      <div class="stat-box red"><div class="stat-lbl">Total a pagar</div><div class="stat-val">${f(total)}</div></div>
+      <div class="stat-box"><div class="stat-lbl">Ítems</div><div class="stat-val">${items.length}</div></div>
+    </div>
+    ${orden.observaciones?`<p style="margin-bottom:14px;font-size:12px;color:#4a5060;background:#f4f5f7;padding:10px 14px;border-radius:6px;border-left:3px solid #C8102E">${x(orden.observaciones)}</p>`:''}
+    <table><thead><tr><th>Proveedor / Concepto</th><th>CBU</th><th>Alias</th><th>Medio</th><th class="r">Monto</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr style="background:#f4f5f7"><td colspan="4" style="padding:8px 10px;font-weight:700">TOTAL</td><td class="r" style="padding:8px 10px;font-weight:700;font-family:monospace;color:#C8102E">${f(total)}</td></tr></tfoot>
+    </table>`;
+}
+
+function exportPDFOrden(id){
+  const orden=S.ordenes?.find(o=>o.id===id); if(!orden) return;
+  pdfOpen(buildOrdenHTML(orden));
+}
+window.exportPDFOrden = exportPDFOrden;
+
+function compartirOrden(id, canal){
+  const orden=S.ordenes?.find(o=>o.id===id); if(!orden) return;
+  const items=orden.items||[];
+  const lineas=items.map(i=>`• ${i.proveedorNombre||i.descripcion||'—'}: ${f(i.monto||0)} (${i.medio||'—'})${i.alias?' — Alias: '+i.alias:i.cbu?' — CBU: '+i.cbu:''}`).join('\n');
+  const texto=`📋 *ORDEN DE PAGO — Barrancas FC*\n📅 Fecha: ${orden.fecha}\n\n${lineas}\n\n💰 *TOTAL: ${f(orden.total||0)}*\n${orden.observaciones?'\n📝 '+orden.observaciones:''}`;
+  if(canal==='wa'){
+    window.open('https://wa.me/?text='+encodeURIComponent(texto),'_blank');
+  } else {
+    const asunto=encodeURIComponent('Orden de Pago BFC — '+orden.fecha);
+    const cuerpo=encodeURIComponent(texto.replace(/\*/g,''));
+    window.location.href=`mailto:?subject=${asunto}&body=${cuerpo}`;
+  }
+}
+window.compartirOrden = compartirOrden;
 
 // ── HELPERS RENDER ──
 function renderBar(id,data,max,color=''){
