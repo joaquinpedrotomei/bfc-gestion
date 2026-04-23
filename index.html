@@ -61,7 +61,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--txt);min-height:10
 .snav-item .sn-icon{font-size:14px}
 
 /* ── MAIN ── */
-.main{padding:20px;max-width:1600px;width:100%;margin:0 auto}
+.main{padding:24px;max-width:1440px;width:100%;margin:0 auto}
 .section-panel{display:none}.section-panel.active{display:block}
 
 /* ── PAGE HEADER ── */
@@ -274,16 +274,6 @@ tr.group-hd:hover{background:var(--bg3)!important}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:640px){.fg{grid-template-columns:1fr}.charts{grid-template-columns:1fr}.ficha-g{grid-template-columns:1fr}}
 
-/* ── TABLA PERSONAL COMPACTA ── */
-#tb-p-table thead th { padding: 8px 8px; font-size: 10px; }
-#tb-p-table tbody td { padding: 7px 8px; font-size: 12px; white-space: nowrap; }
-#tb-p-table tbody td.nm { font-size: 13px; white-space: normal; max-width: 160px; line-height: 1.3; }
-#tb-p-table tbody td.mo { font-size: 11px; }
-#tb-p-table tbody td.mo-total { font-size: 12px; }
-#tb-p-table .btn-sm { padding: 3px 7px; font-size: 10px; }
-#tb-p-table .badge { padding: 1px 6px; font-size: 10px; }
-#tb-p-table td.td-cat { white-space: normal; max-width: 140px; line-height: 1.3; font-size: 11px; }
-#tb-p-table td.td-rol { white-space: normal; max-width: 100px; line-height: 1.3; }
 .cal-nav{display:flex;align-items:center;gap:12px;margin-bottom:18px}
 .cal-nav h3{font-size:18px;font-weight:700;color:var(--txt);min-width:180px;text-align:center}
 .cal-nav button{padding:6px 14px;border:1.5px solid var(--border2);background:#fff;border-radius:6px;cursor:pointer;font-size:14px;color:var(--txt2);transition:all .15s}
@@ -483,17 +473,16 @@ tr.group-hd:hover{background:var(--bg3)!important}
         <div id="ms-chips-container" style="display:none;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:4px"></div>
         <div class="tw"><table id="tb-p-table">
           <thead><tr id="tb-p-head">
-            <th class="sortable" onclick="setSortP('nombre')" style="min-width:130px">Nombre</th>
-            <th class="sortable" onclick="setSortP('rol')" style="min-width:90px">Rol</th>
-            <th class="sortable" onclick="setSortP('categoria')" style="min-width:100px">Categoría</th>
-            <th class="col-jugador sortable" onclick="setSortP('posicion')" style="min-width:80px">Pos.</th>
-            <th class="col-jugador sortable" onclick="setSortP('escalafon')" style="min-width:48px">Esc.</th>
-            <th style="min-width:42px">Fac.</th>
-            <th class="sortable" onclick="setSortP('basico')" style="min-width:88px">Básico</th>
-            <th class="col-jugador sortable" onclick="setSortP('bono')" style="min-width:82px">Bono</th>
-            <th class="sortable" onclick="setSortP('total')" style="min-width:88px">Total</th>
-            <th style="min-width:60px">Estado</th>
-            <th style="min-width:110px">Acciones</th>
+            <th class="sortable" onclick="setSortP('nombre')">Nombre</th>
+            <th class="sortable" onclick="setSortP('rol')">Rol</th>
+            <th class="sortable" onclick="setSortP('categoria')">Categoría</th>
+            <th class="col-jugador sortable" onclick="setSortP('posicion')">Posición</th>
+            <th class="col-jugador sortable" onclick="setSortP('escalafon')">Escal.</th>
+            <th>Fac.</th>
+            <th class="sortable" onclick="setSortP('basico')">Básico</th>
+            <th class="col-jugador sortable" onclick="setSortP('bono')">Bono</th>
+            <th class="sortable" onclick="setSortP('total')">Total</th>
+            <th>Estado</th><th>Acciones</th>
           </tr></thead>
           <tbody id="tb-p"></tbody>
         </table></div>
@@ -1659,8 +1648,6 @@ function renderPersonaConsolidada(funciones, colspan){
   const p0=funciones[0];
   const esMulti=funciones.length>1;
   const gid='g-'+p0.nombre.replace(/[^a-zA-Z0-9]/g,'_');
-  const sub=_personalSub;
-  const mostrarJugador = sub !== 'staff';
 
   const todosRoles=[...new Set(funciones.flatMap(p=>Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[])))];
   const todasCats=[...new Set(funciones.flatMap(p=>Array.isArray(p.categorias)?p.categorias:(p.categoria?[p.categoria]:[])))];
@@ -1668,24 +1655,19 @@ function renderPersonaConsolidada(funciones, colspan){
   const tieneFac=funciones.some(p=>p.factura==='Si');
   const esJugador=todosRoles.includes('Jugador');
 
+  const posCell=`<td class="col-jugador" style="font-size:12px;color:var(--txt2)">${esMulti?'—':x(p0.posicion||'—')}</td>`;
+  const escCell=`<td class="col-jugador">${esMulti?'—':(esJugador&&p0.escalafon?`<span class="badge ba">${p0.escalafon}</span>`:'—')}</td>`;
+  const bonCell=`<td class="col-jugador mo">${esMulti?'—':(esJugador?f(p0.bono):'—')}</td>`;
   const facCell=`<td>${tieneFac?'<span class="badge b-fac">FAC</span>':'<span style="color:var(--txt3);font-size:12px">—</span>'}</td>`;
   const basicoCell=`<td class="mo">${esMulti?'—':f(p0.basico)}</td>`;
   const totalCell=`<td class="mo-total">${f(totalMonto)}${esMulti?`<span style="font-size:10px;color:var(--txt3);margin-left:4px">(${funciones.length})</span>`:''}</td>`;
   const expandBtn=esMulti?`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();togglePersonaGroup('${gid}')" style="font-size:11px;padding:3px 8px" id="btn-${gid}">▶ Ver</button>`:'';
 
-  // Celdas jugador solo si corresponde
-  const jugadorCells = mostrarJugador ? `
-    <td class="col-jugador" style="font-size:11px;color:var(--txt2)">${esMulti?'—':x(p0.posicion||'—')}</td>
-    <td class="col-jugador">${esMulti?'—':(esJugador&&p0.escalafon?`<span class="badge ba">${p0.escalafon}</span>`:'—')}</td>
-    ${facCell}${basicoCell}
-    <td class="col-jugador mo">${esMulti?'—':(esJugador?f(p0.bono):'—')}</td>
-  ` : `${facCell}${basicoCell}`;
-
   let html=`<tr onclick="${esMulti?`togglePersonaGroup('${gid}')`:`openFicha('${p0.id}')`}" style="cursor:pointer">
     <td class="nm">${x(p0.nombre)}</td>
-    <td class="td-rol" style="color:var(--txt2)">${todosRoles.map(r=>x(r)).join(', ')||'—'}</td>
-    <td class="td-cat" style="color:var(--txt2)">${todasCats.map(c=>x(c)).join(', ')||'—'}</td>
-    ${jugadorCells}${totalCell}
+    <td style="font-size:12px;color:var(--txt2)">${todosRoles.map(r=>x(r)).join(', ')||'—'}</td>
+    <td style="font-size:12px;color:var(--txt2)">${todasCats.map(c=>x(c)).join(', ')||'—'}</td>
+    ${posCell}${escCell}${facCell}${basicoCell}${bonCell}${totalCell}
     <td><span class="badge b${p0.estado==='Activo'?'activo':'baja'}">${p0.estado}</span></td>
     <td style="display:flex;gap:4px;flex-wrap:wrap">
       ${expandBtn}
@@ -1694,7 +1676,6 @@ function renderPersonaConsolidada(funciones, colspan){
     </td>
   </tr>`;
 
-  // Sub-filas expandibles
   if(esMulti){
     html+=`<tr id="sub-${gid}" style="display:none"><td colspan="${colspan}" style="padding:0">
       <table style="width:100%;border-collapse:collapse;background:var(--bg2)">`;
@@ -1702,23 +1683,17 @@ function renderPersonaConsolidada(funciones, colspan){
       const roles=Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[]);
       const cats=Array.isArray(p.categorias)?p.categorias:(p.categoria?[p.categoria]:[]);
       const esJ=roles.includes('Jugador');
-      const subJugCells = mostrarJugador ? `
-        <td style="padding:7px 8px;font-size:11px">${esJ?x(p.posicion||'—'):'—'}</td>
-        <td style="padding:7px 8px">${esJ&&p.escalafon?`<span class="badge ba" style="font-size:10px">${p.escalafon}</span>`:'—'}</td>
-        <td style="padding:7px 8px">${p.factura==='Si'?'<span class="badge b-fac" style="font-size:10px">FAC</span>':'—'}</td>
-        <td style="padding:7px 8px;font-family:var(--mono);font-size:11px">${f(p.basico)}</td>
-        <td style="padding:7px 8px;font-family:var(--mono);font-size:11px">${esJ?f(p.bono):'—'}</td>
-      ` : `
-        <td style="padding:7px 8px">${p.factura==='Si'?'<span class="badge b-fac" style="font-size:10px">FAC</span>':'—'}</td>
-        <td style="padding:7px 8px;font-family:var(--mono);font-size:11px">${f(p.basico)}</td>
-      `;
       html+=`<tr style="border-top:1px solid var(--border);cursor:pointer" onclick="openFicha('${p.id}')">
-        <td style="padding:7px 8px 7px 28px;color:var(--txt3);font-size:11px;white-space:normal;line-height:1.3;width:150px">└ ${roles.join(', ')||'—'}</td>
-        <td style="padding:7px 8px;font-size:11px;color:var(--txt2);white-space:normal;max-width:120px;line-height:1.3">${cats.join(', ')||'—'}</td>
-        ${subJugCells}
-        <td style="padding:7px 8px;font-family:var(--mono);font-size:12px;font-weight:700">${f((p.basico||0)+(esJ?p.bono||0:0))}</td>
-        <td style="padding:7px 8px"></td>
-        <td style="padding:7px 8px">
+        <td style="padding:8px 14px 8px 32px;color:var(--txt3);font-size:12px;width:200px">└ ${roles.join(', ')||'—'}</td>
+        <td style="padding:8px 14px;font-size:12px;color:var(--txt2)">${cats.join(', ')||'—'}</td>
+        <td class="col-jugador" style="padding:8px 14px;font-size:12px">${esJ?x(p.posicion||'—'):'—'}</td>
+        <td class="col-jugador" style="padding:8px 14px">${esJ&&p.escalafon?`<span class="badge ba">${p.escalafon}</span>`:'—'}</td>
+        <td style="padding:8px 14px">${p.factura==='Si'?'<span class="badge b-fac">FAC</span>':'—'}</td>
+        <td style="padding:8px 14px;font-family:var(--mono);font-size:12px">${f(p.basico)}</td>
+        <td class="col-jugador" style="padding:8px 14px;font-family:var(--mono);font-size:12px">${esJ?f(p.bono):'—'}</td>
+        <td style="padding:8px 14px;font-family:var(--mono);font-size:13px;font-weight:700">${f((p.basico||0)+(esJ?p.bono||0:0))}</td>
+        <td style="padding:8px 14px"></td>
+        <td style="padding:8px 14px;display:flex;gap:4px">
           <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openMoPersona('${p.id}')">Editar</button>
         </td>
       </tr>`;
