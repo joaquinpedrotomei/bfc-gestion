@@ -1584,7 +1584,6 @@ function renderPersonal() {
   const rolSet=_msState.rol, catSet=_msState.cat;
   const escFil=document.getElementById('fesc').value, est=document.getElementById('fe').value;
   const sub=_personalSub;
-  // Columnas condicionales según subpestaña
   const mostrarJugador = sub !== 'staff';
   document.querySelectorAll('.col-jugador').forEach(el=>{ el.style.display=mostrarJugador?'':'none'; });
   let rows=S.personal.filter(p=>{
@@ -1592,7 +1591,6 @@ function renderPersonal() {
     if(escFil&&p.escalafon!==escFil) return false;
     if(q&&!p.nombre.toLowerCase().includes(q)) return false;
     const roles=Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[]);
-    // Filtro por subpestaña
     if(sub==='jugadores' && !roles.includes('Jugador')) return false;
     if(sub==='staff' && roles.includes('Jugador') && roles.length===1) return false;
     if(rolSet.size>0){ if(!roles.some(r=>rolSet.has(r))) return false; }
@@ -1613,59 +1611,111 @@ function renderPersonal() {
   const tb=document.getElementById('tb-p');
   const colspan=mostrarJugador?11:8;
   if(!rows.length){ tb.innerHTML=`<tr class="empty"><td colspan="${colspan}">Sin resultados</td></tr>`; return; }
-  const nCount={}; rows.forEach(p=>{nCount[p.nombre]=(nCount[p.nombre]||0)+1;});
-  const hayDup=Object.values(nCount).some(v=>v>1);
-  if(hayDup){
-    const groups={},order=[];
-    rows.forEach(p=>{if(!groups[p.nombre]){groups[p.nombre]=[];order.push(p.nombre);} groups[p.nombre].push(p);});
-    let html='';
+
+  // Agrupar por nombre
+  const groups={}, order=[];
+  rows.forEach(p=>{ if(!groups[p.nombre]){groups[p.nombre]=[];order.push(p.nombre);} groups[p.nombre].push(p); });
+
+  let html='';
+
+  // Agrupar por rol para el caso sin filtros en subpestaña todos
+  const agruparPorRol = rolSet.size===0 && catSet.size===0 && !escFil && !q && sub==='todos';
+
+  if(agruparPorRol){
+    // Agrupar filas consolidadas por rol
+    const byRol={}, rolOrder=[];
     order.forEach(nombre=>{
-      const gRows=groups[nombre], gt=gRows.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
-      if(gRows.length>1){ html+=`<tr class="group-hd" style="border-left:3px solid var(--red)"><td colspan="${colspan}">${x(nombre)} <span style="font-weight:400;color:var(--txt3)">${gRows.length} funciones · ${f(gt)}</span></td></tr>`; html+=gRows.map(p=>renderPersonaRow(p,true)).join(''); }
-      else html+=renderPersonaRow(gRows[0],false);
+      const gRows=groups[nombre];
+      const roles=Array.isArray(gRows[0].roles)?gRows[0].roles:(gRows[0].rol?[gRows[0].rol]:[]);
+      const r=roles[0]||'Sin rol';
+      if(!byRol[r]){byRol[r]=[];rolOrder.push(r);}
+      byRol[r].push(nombre);
     });
-    tb.innerHTML=html;
+    rolOrder.forEach(rol=>{
+      const nombres=byRol[rol];
+      const gt=nombres.reduce((s,n)=>s+groups[n].reduce((ss,p)=>ss+(p.basico||0)+(p.bono||0),0),0);
+      html+=`<tr class="group-hd"><td colspan="${colspan}">${x(rol)} — ${nombres.length} persona${nombres.length>1?'s':''} · ${f(gt)}</td></tr>`;
+      nombres.forEach(nombre=>{ html+=renderPersonaConsolidada(groups[nombre], colspan); });
+    });
   } else {
-    if(rolSet.size===0&&catSet.size===0&&!escFil&&!q&&sub==='todos'){
-      const groups={},order=[];
-      rows.forEach(p=>{const r=(Array.isArray(p.roles)&&p.roles.length)?p.roles[0]:(p.rol||'Sin rol'); if(!groups[r]){groups[r]=[];order.push(r);} groups[r].push(p);});
-      let html='';
-      order.forEach(rol=>{const gR=groups[rol],gt=gR.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0); html+=`<tr class="group-hd"><td colspan="${colspan}">${x(rol)} — ${gR.length} persona${gR.length>1?'s':''} · ${f(gt)}</td></tr>`+gR.map(p=>renderPersonaRow(p,false)).join('');});
-      tb.innerHTML=html;
-    } else tb.innerHTML=rows.map(p=>renderPersonaRow(p,false)).join('');
+    order.forEach(nombre=>{ html+=renderPersonaConsolidada(groups[nombre], colspan); });
   }
+
+  tb.innerHTML=html;
 }
 window.renderPersonal = renderPersonal;
 
-function renderPersonaRow(p,isSub){
-  const roles=Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[]);
-  const cats=Array.isArray(p.categorias)?p.categorias:(p.categoria?[p.categoria]:[]);
-  const esJugador=roles.includes('Jugador');
-  const eb=p.escalafon?`<span class="badge ba">${p.escalafon}</span>`:'—';
-  const fac=p.factura==='Si'?`<span class="badge b-fac">FAC</span>`:`<span style="color:var(--txt3);font-size:12px">—</span>`;
-  const posCell=`<td class="col-jugador" style="font-size:12px;color:var(--txt2)">${x(p.posicion||'—')}</td>`;
-  const escCell=`<td class="col-jugador">${esJugador?eb:'—'}</td>`;
-  const bonCell=`<td class="col-jugador mo">${esJugador?f(p.bono):'—'}</td>`;
-  if(isSub) return `<tr onclick="openFicha('${p.id}')" style="background:var(--bg2)">
-    <td style="padding-left:28px;border-left:3px solid var(--border2);color:var(--txt2);font-size:12px">└ ${roles.map(r=>x(r)).join(', ')||'—'}</td>
-    <td></td><td style="font-size:12px;color:var(--txt2)">${cats.map(c=>x(c)).join(', ')||'—'}</td>
-    ${posCell}${escCell}${fac?`<td>${fac}</td>`:'<td>—</td>'}
-    <td class="mo">${f(p.basico)}</td>${bonCell}
-    <td class="mo-total">${f((p.basico||0)+(esJugador?p.bono||0:0))}</td>
-    <td><span class="badge bactivo" style="font-size:10px">${p.estado}</span></td>
-    <td style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openMoPersona('${p.id}')">Editar</button><button class="btn btn-success btn-sm" onclick="event.stopPropagation();nuevaFuncion('${p.id}')">+ Rol</button></td>
+function renderPersonaConsolidada(funciones, colspan){
+  const p0=funciones[0]; // primera función como referencia para datos personales
+  const esMulti=funciones.length>1;
+  const gid='g-'+p0.nombre.replace(/[^a-zA-Z0-9]/g,'_');
+
+  // Datos combinados de todas las funciones
+  const todosRoles=[...new Set(funciones.flatMap(p=>Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[])))];
+  const todasCats=[...new Set(funciones.flatMap(p=>Array.isArray(p.categorias)?p.categorias:(p.categoria?[p.categoria]:[])))];
+  const totalMonto=funciones.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
+  const tieneFac=funciones.some(p=>p.factura==='Si');
+  const esJugador=todosRoles.includes('Jugador');
+
+  // Fila principal (consolidada)
+  const posCell=`<td class="col-jugador" style="font-size:12px;color:var(--txt2)">${esMulti?'—':x(p0.posicion||'—')}</td>`;
+  const escCell=`<td class="col-jugador">${esMulti?'—':(esJugador&&p0.escalafon?`<span class="badge ba">${p0.escalafon}</span>`:'—')}</td>`;
+  const bonCell=`<td class="col-jugador mo">${esMulti?'—':(esJugador?f(p0.bono):'—')}</td>`;
+  const facCell=`<td>${tieneFac?'<span class="badge b-fac">FAC</span>':'<span style="color:var(--txt3);font-size:12px">—</span>'}</td>`;
+  const basicoCell=`<td class="mo">${esMulti?'—':f(p0.basico)}</td>`;
+  const totalCell=`<td class="mo-total">${f(totalMonto)}${esMulti?`<span style="font-size:10px;color:var(--txt3);margin-left:4px">(${funciones.length})</span>`:''}</td>`;
+  const expandBtn=esMulti?`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();togglePersonaGroup('${gid}')" style="font-size:11px;padding:3px 8px" id="btn-${gid}">▶ Ver</button>`:'';
+
+  let html=`<tr onclick="${esMulti?`togglePersonaGroup('${gid}')`:`openFicha('${p0.id}')`}" style="cursor:pointer">
+    <td class="nm">${x(p0.nombre)}</td>
+    <td style="font-size:12px;color:var(--txt2)">${todosRoles.map(r=>x(r)).join(', ')||'—'}</td>
+    <td style="font-size:12px;color:var(--txt2)">${todasCats.map(c=>x(c)).join(', ')||'—'}</td>
+    ${posCell}${escCell}${facCell}${basicoCell}${bonCell}${totalCell}
+    <td><span class="badge b${p0.estado==='Activo'?'activo':'baja'}">${p0.estado}</span></td>
+    <td style="display:flex;gap:4px">
+      ${expandBtn}
+      ${!esMulti?`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openMoPersona('${p0.id}')">Editar</button>`:''}
+      <button class="btn btn-success btn-sm" onclick="event.stopPropagation();nuevaFuncion('${p0.id}')">+ Rol</button>
+    </td>
   </tr>`;
-  return `<tr onclick="openFicha('${p.id}')">
-    <td class="nm">${x(p.nombre)}</td>
-    <td style="font-size:12px;color:var(--txt2)">${roles.map(r=>x(r)).join(', ')||'—'}</td>
-    <td style="font-size:12px;color:var(--txt2)">${cats.map(c=>x(c)).join(', ')||'—'}</td>
-    ${posCell}${escCell}<td>${fac}</td>
-    <td class="mo">${f(p.basico)}</td>${bonCell}
-    <td class="mo-total">${f((p.basico||0)+(esJugador?p.bono||0:0))}</td>
-    <td><span class="badge b${p.estado==='Activo'?'activo':'baja'}">${p.estado}</span></td>
-    <td style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openMoPersona('${p.id}')">Editar</button><button class="btn btn-success btn-sm" onclick="event.stopPropagation();nuevaFuncion('${p.id}')">+ Rol</button></td>
-  </tr>`;
+
+  // Sub-filas (ocultas por defecto)
+  if(esMulti){
+    html+=`<tr id="sub-${gid}" style="display:none"><td colspan="${colspan}" style="padding:0">
+      <table style="width:100%;border-collapse:collapse;background:var(--bg2)">`;
+    funciones.forEach(p=>{
+      const roles=Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[]);
+      const cats=Array.isArray(p.categorias)?p.categorias:(p.categoria?[p.categoria]:[]);
+      const esJ=roles.includes('Jugador');
+      html+=`<tr style="border-top:1px solid var(--border)" onclick="openFicha('${p.id}')">
+        <td style="padding:8px 14px 8px 32px;color:var(--txt3);font-size:12px;width:200px">└ ${roles.join(', ')||'—'}</td>
+        <td style="padding:8px 14px;font-size:12px;color:var(--txt2)">${cats.join(', ')||'—'}</td>
+        <td class="col-jugador" style="padding:8px 14px;font-size:12px">${esJ?x(p.posicion||'—'):'—'}</td>
+        <td class="col-jugador" style="padding:8px 14px">${esJ&&p.escalafon?`<span class="badge ba">${p.escalafon}</span>`:'—'}</td>
+        <td style="padding:8px 14px">${p.factura==='Si'?'<span class="badge b-fac">FAC</span>':'—'}</td>
+        <td style="padding:8px 14px;font-family:var(--mono);font-size:12px">${f(p.basico)}</td>
+        <td class="col-jugador" style="padding:8px 14px;font-family:var(--mono);font-size:12px">${esJ?f(p.bono):'—'}</td>
+        <td style="padding:8px 14px;font-family:var(--mono);font-size:13px;font-weight:700">${f((p.basico||0)+(esJ?p.bono||0:0))}</td>
+        <td style="padding:8px 14px"></td>
+        <td style="padding:8px 14px;display:flex;gap:4px">
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openMoPersona('${p.id}')">Editar</button>
+        </td>
+      </tr>`;
+    });
+    html+=`</table></td></tr>`;
+  }
+  return html;
 }
+
+function togglePersonaGroup(gid){
+  const sub=document.getElementById('sub-'+gid);
+  const btn=document.getElementById('btn-'+gid);
+  if(!sub) return;
+  const abierto=sub.style.display!=='none';
+  sub.style.display=abierto?'none':'table-row';
+  if(btn) btn.textContent=abierto?'▶ Ver':'▼ Ocultar';
+}
+window.togglePersonaGroup=togglePersonaGroup;
 
 function renderBajas(){
   const bajas=S.personal.filter(p=>p.estado==='Baja');
