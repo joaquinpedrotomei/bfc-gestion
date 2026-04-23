@@ -61,7 +61,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--txt);min-height:10
 .snav-item .sn-icon{font-size:14px}
 
 /* ── MAIN ── */
-.main{padding:24px;max-width:1440px;width:100%;margin:0 auto}
+.main{padding:20px;max-width:1600px;width:100%;margin:0 auto}
 .section-panel{display:none}.section-panel.active{display:block}
 
 /* ── PAGE HEADER ── */
@@ -274,7 +274,14 @@ tr.group-hd:hover{background:var(--bg3)!important}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:640px){.fg{grid-template-columns:1fr}.charts{grid-template-columns:1fr}.ficha-g{grid-template-columns:1fr}}
 
-/* ── CALENDARIO ── */
+/* ── TABLA PERSONAL COMPACTA ── */
+#tb-p-table thead th { padding: 8px 8px; font-size: 10px; }
+#tb-p-table tbody td { padding: 7px 8px; font-size: 12px; }
+#tb-p-table tbody td.nm { font-size: 13px; }
+#tb-p-table tbody td.mo { font-size: 11px; }
+#tb-p-table tbody td.mo-total { font-size: 12px; }
+#tb-p-table .btn-sm { padding: 3px 7px; font-size: 10px; }
+#tb-p-table .badge { padding: 1px 6px; font-size: 10px; }
 .cal-nav{display:flex;align-items:center;gap:12px;margin-bottom:18px}
 .cal-nav h3{font-size:18px;font-weight:700;color:var(--txt);min-width:180px;text-align:center}
 .cal-nav button{padding:6px 14px;border:1.5px solid var(--border2);background:#fff;border-radius:6px;cursor:pointer;font-size:14px;color:var(--txt2);transition:all .15s}
@@ -474,16 +481,17 @@ tr.group-hd:hover{background:var(--bg3)!important}
         <div id="ms-chips-container" style="display:none;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:4px"></div>
         <div class="tw"><table id="tb-p-table">
           <thead><tr id="tb-p-head">
-            <th class="sortable" onclick="setSortP('nombre')">Nombre</th>
-            <th class="sortable" onclick="setSortP('rol')">Rol</th>
-            <th class="sortable" onclick="setSortP('categoria')">Categoría</th>
-            <th class="col-jugador sortable" onclick="setSortP('posicion')">Posición</th>
-            <th class="col-jugador sortable" onclick="setSortP('escalafon')">Escal.</th>
-            <th>Fac.</th>
-            <th class="sortable" onclick="setSortP('basico')">Básico</th>
-            <th class="col-jugador sortable" onclick="setSortP('bono')">Bono</th>
-            <th class="sortable" onclick="setSortP('total')">Total</th>
-            <th>Estado</th><th>Acciones</th>
+            <th class="sortable" onclick="setSortP('nombre')" style="min-width:130px">Nombre</th>
+            <th class="sortable" onclick="setSortP('rol')" style="min-width:90px">Rol</th>
+            <th class="sortable" onclick="setSortP('categoria')" style="min-width:100px">Categoría</th>
+            <th class="col-jugador sortable" onclick="setSortP('posicion')" style="min-width:80px">Pos.</th>
+            <th class="col-jugador sortable" onclick="setSortP('escalafon')" style="min-width:48px">Esc.</th>
+            <th style="min-width:42px">Fac.</th>
+            <th class="sortable" onclick="setSortP('basico')" style="min-width:88px">Básico</th>
+            <th class="col-jugador sortable" onclick="setSortP('bono')" style="min-width:82px">Bono</th>
+            <th class="sortable" onclick="setSortP('total')" style="min-width:88px">Total</th>
+            <th style="min-width:60px">Estado</th>
+            <th style="min-width:110px">Acciones</th>
           </tr></thead>
           <tbody id="tb-p"></tbody>
         </table></div>
