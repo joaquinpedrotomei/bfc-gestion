@@ -1652,60 +1652,69 @@ function renderPersonal() {
 window.renderPersonal = renderPersonal;
 
 function renderPersonaRows(funciones, mostrarJugador){
-  // Siempre muestra todas las funciones expandidas, una fila por función
-  // Si hay más de una, la primera lleva el nombre y las siguientes muestran solo el rol
   let html='';
-  funciones.forEach((p, idx)=>{
-    const roles=Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[]);
-    const cats=Array.isArray(p.categorias)?p.categorias:(p.categoria?[p.categoria]:[]);
-    const esJugador=roles.includes('Jugador');
-    const esPrimera=idx===0;
-    const esMulti=funciones.length>1;
+  const esMulti = funciones.length > 1;
 
-    const nombreCell = esPrimera
-      ? `<td class="nm" rowspan="${funciones.length}">${x(p.nombre)}</td>`
-      : '';
-
-    const rolTxt=roles.join(', ')||'—';
-    const catTxt=cats.join(', ')||'—';
-
-    // Celdas que solo aplican a jugadores (col-jugador)
-    const jugCells = mostrarJugador ? `
-      <td class="col-jugador" style="font-size:12px;color:var(--txt2)">${x(p.posicion||'—')}</td>
-      <td class="col-jugador">${esJugador&&p.escalafon?`<span class="badge ba">${p.escalafon}</span>`:'—'}</td>
-    ` : '';
-
-    const bonCell = mostrarJugador
-      ? `<td class="col-jugador mo">${esJugador?f(p.bono):'—'}</td>`
-      : '';
-
-    const totalVal=(p.basico||0)+(esJugador?p.bono||0:0);
-
-    const rowStyle = esMulti && !esPrimera
-      ? 'background:var(--bg2)'
-      : '';
-
-    const borderLeft = esMulti
-      ? (esPrimera?'border-left:3px solid var(--red)':'border-left:3px solid var(--border2)')
-      : '';
-
-    html+=`<tr onclick="openFicha('${p.id}')" style="cursor:pointer;${rowStyle};${borderLeft}">
-      ${nombreCell}
-      <td style="font-size:12px;color:${esPrimera?'var(--txt2)':'var(--txt3)'}">${x(rolTxt)}</td>
-      <td style="font-size:12px;color:var(--txt2)">${x(catTxt)}</td>
-      ${jugCells}
-      <td>${p.factura==='Si'?'<span class="badge b-fac">FAC</span>':'<span style="color:var(--txt3);font-size:12px">—</span>'}</td>
-      <td class="mo">${f(p.basico)}</td>
-      ${bonCell}
-      <td class="mo-total">${f(totalVal)}</td>
-      <td><span class="badge b${p.estado==='Activo'?'activo':'baja'}">${p.estado}</span></td>
-      <td style="display:flex;gap:4px">
-        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openMoPersona('${p.id}')">Editar</button>
-        <button class="btn btn-success btn-sm" onclick="event.stopPropagation();nuevaFuncion('${p.id}')">+ Rol</button>
+  if(esMulti){
+    const gt = funciones.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
+    const p0 = funciones[0];
+    html+=`<tr class="group-hd" style="border-left:3px solid var(--red)">
+      <td colspan="20">
+        <span style="font-weight:700;color:var(--txt);font-size:13px">${x(p0.nombre)}</span>
+        <span style="font-weight:400;color:var(--txt3);margin-left:8px;font-size:11px;letter-spacing:.3px">${funciones.length} FUNCIONES · ${f(gt)}</span>
+        <button class="btn btn-success btn-sm" style="margin-left:10px;font-size:10px;padding:2px 8px" onclick="event.stopPropagation();nuevaFuncion('${p0.id}')">+ Rol</button>
       </td>
     </tr>`;
-  });
+    funciones.forEach(p=>{ html+=renderPersonaSubFila(p, mostrarJugador); });
+  } else {
+    html+=renderPersonaFilaNormal(funciones[0], mostrarJugador);
+  }
   return html;
+}
+
+function renderPersonaFilaNormal(p, mostrarJugador){
+  const roles=Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[]);
+  const cats=Array.isArray(p.categorias)?p.categorias:(p.categoria?[p.categoria]:[]);
+  const esJ=roles.includes('Jugador');
+  const total=(p.basico||0)+(esJ?p.bono||0:0);
+  const jugCells=mostrarJugador?`<td style="font-size:12px;color:var(--txt2)">${x(p.posicion||'—')}</td><td>${esJ&&p.escalafon?`<span class="badge ba">${p.escalafon}</span>`:'—'}</td>`:'' ;
+  const bonCell=mostrarJugador?`<td class="mo">${esJ?f(p.bono):'—'}</td>`:'';
+  return `<tr onclick="openFicha('${p.id}')" style="cursor:pointer">
+    <td class="nm">${x(p.nombre)}</td>
+    <td style="font-size:12px;color:var(--txt2)">${roles.join(', ')||'—'}</td>
+    <td style="font-size:12px;color:var(--txt2)">${cats.join(', ')||'—'}</td>
+    ${jugCells}
+    <td>${p.factura==='Si'?'<span class="badge b-fac">FAC</span>':'<span style="color:var(--txt3);font-size:12px">—</span>'}</td>
+    <td class="mo">${f(p.basico)}</td>${bonCell}
+    <td class="mo-total">${f(total)}</td>
+    <td><span class="badge b${p.estado==='Activo'?'activo':'baja'}">${p.estado}</span></td>
+    <td style="display:flex;gap:4px">
+      <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openMoPersona('${p.id}')">Editar</button>
+      <button class="btn btn-success btn-sm" onclick="event.stopPropagation();nuevaFuncion('${p.id}')">+ Rol</button>
+    </td>
+  </tr>`;
+}
+
+function renderPersonaSubFila(p, mostrarJugador){
+  const roles=Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[]);
+  const cats=Array.isArray(p.categorias)?p.categorias:(p.categoria?[p.categoria]:[]);
+  const esJ=roles.includes('Jugador');
+  const total=(p.basico||0)+(esJ?p.bono||0:0);
+  const jugCells=mostrarJugador?`<td style="font-size:12px;padding-left:6px">${esJ?x(p.posicion||'—'):'—'}</td><td>${esJ&&p.escalafon?`<span class="badge ba">${p.escalafon}</span>`:'—'}</td>`:'' ;
+  const bonCell=mostrarJugador?`<td class="mo">${esJ?f(p.bono):'—'}</td>`:'';
+  return `<tr onclick="openFicha('${p.id}')" style="cursor:pointer;background:var(--bg2);border-left:3px solid var(--border2)">
+    <td style="padding-left:22px;color:var(--txt3);font-size:12px">└ ${roles.join(', ')||'—'}</td>
+    <td style="font-size:12px;color:var(--txt2)">${cats.join(', ')||'—'}</td>
+    <td></td>
+    ${jugCells}
+    <td>${p.factura==='Si'?'<span class="badge b-fac">FAC</span>':'<span style="color:var(--txt3);font-size:12px">—</span>'}</td>
+    <td class="mo">${f(p.basico)}</td>${bonCell}
+    <td class="mo-total">${f(total)}</td>
+    <td></td>
+    <td style="display:flex;gap:4px">
+      <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openMoPersona('${p.id}')">Editar</button>
+    </td>
+  </tr>`;
 }
 
 function renderBajas(){
