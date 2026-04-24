@@ -408,8 +408,8 @@ tr.group-hd:hover{background:var(--bg3)!important}
       <div class="stats">
         <div class="sc red"><div class="lbl">Masa Salarial Total</div><div class="val" id="d-masa">—</div><div class="sub">básico + bono / mes</div></div>
         <div class="sc"><div class="lbl">Personal Activo</div><div class="val" id="d-personal">—</div><div class="sub" id="d-funciones">—</div></div>
-        <div class="sc"><div class="lbl">Jugadores</div><div class="val" id="d-jug">—</div></div>
-        <div class="sc"><div class="lbl">Cuerpo Técnico</div><div class="val" id="d-ct">—</div></div>
+        <div class="sc"><div class="lbl">Jugadores</div><div class="val" id="d-jug">—</div><div class="sub">personas únicas</div></div>
+        <div class="sc"><div class="lbl">Cuerpo Técnico</div><div class="val" id="d-ct">—</div><div class="sub">personas únicas</div></div>
       </div>
 
       <div class="dash-section-title">Contabilidad</div>
@@ -2502,12 +2502,33 @@ window.renderResumen = renderResumen;
 function renderDashboard(){
   const activos=S.personal.filter(p=>p.estado==='Activo');
   const masa=activos.reduce((s,p)=>s+(p.basico||0)+(p.bono||0),0);
-  const jug=activos.filter(p=>p.rol==='Jugador'||( Array.isArray(p.roles)&&p.roles.includes('Jugador')));
-  const ct=activos.filter(p=>CT_ROLES.includes(p.rol)||( Array.isArray(p.roles)&&p.roles.some(r=>CT_ROLES.includes(r))));
+
+  // Personas únicas (un nombre = una persona, aunque tenga múltiples funciones)
   const nUniq=new Set(activos.map(p=>p.nombre)).size;
-  st('d-masa',f(masa)); st('d-personal',nUniq);
+
+  // Jugadores únicos: personas que tienen al menos una función con rol Jugador
+  const jugNombres=new Set(activos
+    .filter(p=>{ const r=Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[]); return r.includes('Jugador'); })
+    .map(p=>p.nombre));
+
+  // CT únicos: personas que tienen al menos una función con rol de CT
+  // Usamos tanto CT_ROLES (array dinámico) como fallback estático por si no cargaron
+  const ctRolesFallback=['DT','Ayudante de Campo','PF','Entrenador de Arqueros'];
+  const ctRolesActivos=(CT_ROLES&&CT_ROLES.length>0)?CT_ROLES:ctRolesFallback;
+  const ctNombres=new Set(activos
+    .filter(p=>{ const r=Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[]); return r.some(rol=>ctRolesActivos.includes(rol)); })
+    .map(p=>p.nombre));
+
+  // Staff (ni jugadores ni CT)
+  const staffNombres=new Set(activos
+    .filter(p=>!jugNombres.has(p.nombre)&&!ctNombres.has(p.nombre))
+    .map(p=>p.nombre));
+
+  st('d-masa',f(masa));
+  st('d-personal',nUniq);
   st('d-funciones',nUniq<activos.length?`${activos.length} funciones`:'');
-  st('d-jug',jug.length); st('d-ct',ct.length);
+  st('d-jug',jugNombres.size);
+  st('d-ct',ctNombres.size);
   // Contabilidad: mes actual
   const now=new Date(), prefix=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const transMes=S.transacciones.filter(t=>(t.fecha||'').startsWith(prefix));
