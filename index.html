@@ -306,6 +306,42 @@ tr.group-hd:hover{background:var(--bg3)!important}
 .cal-proj-row:last-child{border-bottom:none;font-weight:700;font-size:13px}
 .cal-proj-row span:first-child{color:var(--txt2)}
 .cal-proj-saldo{font-family:var(--mono);font-weight:700}
+
+/* ── CHECKLIST ── */
+.ck-tabs{display:flex;gap:3px;margin-bottom:20px;border-bottom:2px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.ck-tab{padding:10px 16px;cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:var(--txt3);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--sans)}
+.ck-tab:hover{color:var(--txt2)}.ck-tab.active{color:var(--red);border-bottom-color:var(--red)}
+.ck-panel{display:none}.ck-panel.active{display:block}
+.partido-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;margin-top:4px}
+.partido-card{background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow);overflow:hidden;transition:box-shadow .15s}
+.partido-card:hover{box-shadow:var(--shadow-md)}
+.partido-card.local .pcard-head{border-top:4px solid var(--green)}.partido-card.visitante .pcard-head{border-top:4px solid var(--blue)}
+.pcard-head{padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;border-top:4px solid transparent}
+.pcard-fecha{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--txt3)}
+.pcard-rival{font-size:16px;font-weight:700;color:var(--txt);margin-top:2px}
+.pcard-cats{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.pcard-cat{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--bg3);color:var(--txt3);letter-spacing:.3px}
+.pcard-lv{font-size:13px;font-weight:800;padding:5px 12px;border-radius:6px;flex-shrink:0}
+.pcard-lv.L{background:var(--green-lt);color:var(--green)}.pcard-lv.V{background:var(--blue-lt);color:var(--blue)}
+.pcard-body{padding:0 16px 14px}
+.pcard-checklist{margin-top:6px}
+.pcard-item{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)}
+.pcard-item:last-child{border-bottom:none}
+.pcard-cb{width:16px;height:16px;accent-color:var(--red);cursor:pointer;flex-shrink:0;margin-top:2px}
+.pcard-item-content{flex:1;min-width:0}
+.pcard-item-label{font-size:13px;color:var(--txt2);cursor:pointer;display:block;line-height:1.3}
+.pcard-item-label.checked{text-decoration:line-through;color:var(--txt3)}
+.pcard-obs-txt{font-size:11px;color:var(--txt3);font-style:italic;margin-top:2px;display:block}
+.pcard-obs-input{width:100%;margin-top:4px;padding:4px 8px;border:1.5px solid var(--border2);border-radius:5px;font-size:11px;font-family:var(--sans);outline:none;color:var(--txt);display:none}
+.pcard-obs-input:focus{border-color:var(--red)}
+.pcard-progress{height:4px;background:var(--bg3);border-radius:2px;margin:10px 0 2px}
+.pcard-progress-fill{height:100%;border-radius:2px;background:var(--red);transition:width .3s}
+.pcard-progress-fill.done{background:var(--green)}
+.pcard-footer{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;background:var(--bg2);border-top:1px solid var(--border);font-size:11px;color:var(--txt3)}
+.ck-item-row{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fff;border:1px solid var(--border);border-radius:7px;margin-bottom:6px;transition:border .15s}
+.ck-item-row:hover{border-color:var(--border2)}
+.ck-item-nombre{flex:1;font-size:13px;color:var(--txt)}
+.ck-item-cat{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--red-lt);color:var(--red)}
 </style>
 </head>
 <body>
@@ -359,6 +395,7 @@ tr.group-hd:hover{background:var(--bg3)!important}
     <div class="snav-item active" data-section="dashboard"><span class="sn-icon">📊</span>Dashboard</div>
     <div class="snav-item" data-section="ch"><span class="sn-icon">👥</span>Capital Humano</div>
     <div class="snav-item" data-section="cont"><span class="sn-icon">💰</span>Contabilidad</div>
+    <div class="snav-item" data-section="checklist"><span class="sn-icon">✅</span>Checklist</div>
   </div>
 
   <div class="main">
@@ -942,6 +979,79 @@ tr.group-hd:hover{background:var(--bg3)!important}
     </div>
 
   </div><!-- /main -->
+
+    <!-- ══════════════════ CHECKLIST ══════════════════ -->
+    <div class="section-panel" id="sec-checklist">
+      <div class="main">
+        <div class="ph">
+          <div><h2>Checklist</h2><p>Fixtures y preparación de partidos</p></div>
+          <div class="ph-actions">
+            <button class="btn btn-secondary btn-sm" onclick="switchCK('items')">⚙ Items base</button>
+            <button class="btn btn-ghost btn-sm" onclick="dlFixtureTemplate()">⬇ Plantilla</button>
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('fi-fixture').click()">↑ Importar fixture</button>
+            <input type="file" id="fi-fixture" accept=".xlsx" style="display:none" onchange="importFixture(this)">
+            <button class="btn btn-primary" onclick="openMoPartido()">+ Partido</button>
+          </div>
+        </div>
+
+        <!-- Sub-tabs -->
+        <div class="ck-tabs">
+          <button class="ck-tab active" data-ck="primera" onclick="switchCK('primera')">Primera</button>
+          <button class="ck-tab" data-ck="juveniles" onclick="switchCK('juveniles')">Juv. 4–6</button>
+          <button class="ck-tab" data-ck="juveniles2" onclick="switchCK('juveniles2')">Juv. 7–9</button>
+          <button class="ck-tab" data-ck="inf2013" onclick="switchCK('inf2013')">Inf. 2013</button>
+          <button class="ck-tab" data-ck="inf2014" onclick="switchCK('inf2014')">Inf. 2014</button>
+          <button class="ck-tab" data-ck="inf2015" onclick="switchCK('inf2015')">Inf. 2015</button>
+          <button class="ck-tab" data-ck="inf2016" onclick="switchCK('inf2016')">Inf. 2016</button>
+          <button class="ck-tab" data-ck="todos" onclick="switchCK('todos')">Todos</button>
+          <button class="ck-tab" data-ck="items" onclick="switchCK('items')">⚙ Items</button>
+        </div>
+
+        <!-- Panel partidos (reutilizado para cada tab) -->
+        <div class="ck-panel active" id="ck-primera">
+          <div class="partido-grid" id="pg-primera"></div>
+          <div id="pg-primera-empty" style="display:none;color:var(--txt3);font-size:13px;padding:20px 0">Sin partidos cargados.</div>
+        </div>
+        <div class="ck-panel" id="ck-juveniles">
+          <div class="partido-grid" id="pg-juveniles"></div>
+          <div id="pg-juveniles-empty" style="display:none;color:var(--txt3);font-size:13px;padding:20px 0">Sin partidos cargados.</div>
+        </div>
+        <div class="ck-panel" id="ck-juveniles2">
+          <div class="partido-grid" id="pg-juveniles2"></div>
+          <div id="pg-juveniles2-empty" style="display:none;color:var(--txt3);font-size:13px;padding:20px 0">Sin partidos cargados.</div>
+        </div>
+        <div class="ck-panel" id="ck-inf2013">
+          <div class="partido-grid" id="pg-inf2013"></div>
+          <div id="pg-inf2013-empty" style="display:none;color:var(--txt3);font-size:13px;padding:20px 0">Sin partidos cargados.</div>
+        </div>
+        <div class="ck-panel" id="ck-inf2014">
+          <div class="partido-grid" id="pg-inf2014"></div>
+          <div id="pg-inf2014-empty" style="display:none;color:var(--txt3);font-size:13px;padding:20px 0">Sin partidos cargados.</div>
+        </div>
+        <div class="ck-panel" id="ck-inf2015">
+          <div class="partido-grid" id="pg-inf2015"></div>
+          <div id="pg-inf2015-empty" style="display:none;color:var(--txt3);font-size:13px;padding:20px 0">Sin partidos cargados.</div>
+        </div>
+        <div class="ck-panel" id="ck-inf2016">
+          <div class="partido-grid" id="pg-inf2016"></div>
+          <div id="pg-inf2016-empty" style="display:none;color:var(--txt3);font-size:13px;padding:20px 0">Sin partidos cargados.</div>
+        </div>
+        <div class="ck-panel" id="ck-todos">
+          <div class="partido-grid" id="pg-todos"></div>
+          <div id="pg-todos-empty" style="display:none;color:var(--txt3);font-size:13px;padding:20px 0">Sin partidos cargados.</div>
+        </div>
+
+        <!-- Panel items base -->
+        <div class="ck-panel" id="ck-items">
+          <div class="ph" style="margin-bottom:16px">
+            <div><h3 style="font-size:16px;font-weight:700">Items del Checklist</h3><p style="font-size:13px;color:var(--txt3)">Se aplican a todos los partidos nuevos</p></div>
+            <div class="ph-actions"><button class="btn btn-primary" onclick="openMoCkItem()">+ Nuevo Item</button></div>
+          </div>
+          <div id="ck-items-list"></div>
+        </div>
+      </div>
+    </div>
+
 </div><!-- /app -->
 
 <!-- ══ MODALES CAPITAL HUMANO ══ -->
@@ -1241,6 +1351,92 @@ tr.group-hd:hover{background:var(--bg3)!important}
   </div>
 </div>
 
+<!-- Modal Partido -->
+<div class="mo-overlay" id="mo-partido">
+  <div class="mo" style="max-width:520px">
+    <div class="mo-hd"><h3 id="mo-part-title">Nuevo Partido</h3><span class="mo-x" onclick="closeMoPartido()">×</span></div>
+    <div class="mo-bd">
+      <input type="hidden" id="part-id">
+      <div class="fg">
+        <div class="fg-row"><label>Rival *</label><input id="part-rival" type="text" placeholder="Nombre del equipo rival"></div>
+        <div class="fg-row"><label>Fecha *</label><input id="part-fecha" type="date"></div>
+        <div class="fg-row"><label>Hora</label><input id="part-hora" type="time" placeholder="HH:MM"></div>
+        <div class="fg-row"><label>Estado</label>
+          <select id="part-estado" onchange="togglePartidoEstado()">
+            <option value="normal">✅ Confirmado</option>
+            <option value="suspendido">🚫 Suspendido</option>
+            <option value="postergado">⏸ Postergado</option>
+          </select>
+        </div>
+        <div class="fg-row" id="part-nueva-fecha-wrap" style="display:none">
+          <label>Nueva fecha (postergado)</label>
+          <input id="part-nueva-fecha" type="date">
+        </div>
+        <div class="fg-row"><label>Local / Visitante *</label>
+          <select id="part-lv">
+            <option value="L">🟢 Local (L)</option>
+            <option value="V">🔵 Visitante (V)</option>
+          </select>
+        </div>
+        <div class="fg-row ff"><label>Categorías *</label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;border:1.5px solid var(--border2);border-radius:6px" id="part-cats-wrap">
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:500;cursor:pointer"><input type="checkbox" value="Primera División" class="part-cat-cb" style="accent-color:var(--red)"> Primera División</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:500;cursor:pointer"><input type="checkbox" value="4ta División" class="part-cat-cb" style="accent-color:var(--red)"> 4ta</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:500;cursor:pointer"><input type="checkbox" value="5ta División" class="part-cat-cb" style="accent-color:var(--red)"> 5ta</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:500;cursor:pointer"><input type="checkbox" value="6ta División" class="part-cat-cb" style="accent-color:var(--red)"> 6ta</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:500;cursor:pointer"><input type="checkbox" value="7ma División" class="part-cat-cb" style="accent-color:var(--red)"> 7ma</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:500;cursor:pointer"><input type="checkbox" value="8va División" class="part-cat-cb" style="accent-color:var(--red)"> 8va</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:500;cursor:pointer"><input type="checkbox" value="9na División" class="part-cat-cb" style="accent-color:var(--red)"> 9na</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:500;cursor:pointer"><input type="checkbox" value="Infantiles 2013" class="part-cat-cb" style="accent-color:var(--red)"> 2013</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:500;cursor:pointer"><input type="checkbox" value="Infantiles 2014" class="part-cat-cb" style="accent-color:var(--red)"> 2014</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:500;cursor:pointer"><input type="checkbox" value="Infantiles 2015" class="part-cat-cb" style="accent-color:var(--red)"> 2015</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:500;cursor:pointer"><input type="checkbox" value="Infantiles 2016" class="part-cat-cb" style="accent-color:var(--red)"> 2016</label>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="setCatPreset('46')">4ta-5ta-6ta</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="setCatPreset('79')">7ma-8va-9na</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="setCatPreset('inf')">Infantiles</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="setCatPreset('')">Limpiar</button>
+          </div>
+        </div>
+        <div class="fg-row ff"><label>Lugar / Cancha</label><input id="part-lugar" type="text" placeholder="Ej: Noble GEBA, Excursionistas…"></div>
+        <div class="fg-row ff"><label>Observaciones</label><textarea id="part-obs" style="min-height:56px"></textarea></div>
+      </div>
+    </div>
+    <div class="mo-ft">
+      <button class="btn btn-danger btn-sm" id="part-del-btn" style="display:none;margin-right:auto" onclick="eliminarPartido()">Eliminar</button>
+      <button class="btn btn-ghost" onclick="closeMoPartido()">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePartido()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Item Checklist -->
+<div class="mo-overlay" id="mo-ck-item">
+  <div class="mo" style="max-width:420px">
+    <div class="mo-hd"><h3 id="mo-cki-title">Nuevo Item</h3><span class="mo-x" onclick="closeMoCkItem()">×</span></div>
+    <div class="mo-bd">
+      <input type="hidden" id="cki-id">
+      <div class="fg">
+        <div class="fg-row ff"><label>Nombre del item *</label><input id="cki-nombre" type="text" placeholder="Ej: Botiquín, Pelota oficial, Árbitro confirmado…"></div>
+        <div class="fg-row ff"><label>Categoría / Sección</label><input id="cki-cat" type="text" placeholder="Ej: Logística, Médico, Cancha…"></div>
+        <div class="fg-row ff"><label>¿Aplica a?</label>
+          <select id="cki-aplica">
+            <option value="todos">Todos los partidos</option>
+            <option value="local">Solo local</option>
+            <option value="visitante">Solo visitante</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="mo-ft">
+      <button class="btn btn-danger btn-sm" id="cki-del-btn" style="display:none;margin-right:auto" onclick="eliminarCkItem()">Eliminar</button>
+      <button class="btn btn-ghost" onclick="closeMoCkItem()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveCkItem()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Caja -->
 <div class="mo-overlay" id="mo-caja">
   <div class="mo" style="max-width:440px">
@@ -1494,8 +1690,10 @@ document.querySelectorAll('.snav-item').forEach(item=>{
     document.querySelectorAll('.snav-item').forEach(n=>n.classList.remove('active'));
     document.querySelectorAll('.section-panel').forEach(p=>p.classList.remove('active'));
     item.classList.add('active');
-    document.getElementById('sec-'+item.dataset.section).classList.add('active');
+    const sec=document.getElementById('sec-'+item.dataset.section);
+    if(sec) sec.classList.add('active');
     if(item.dataset.section==='dashboard') renderDashboard();
+    if(item.dataset.section==='checklist'){ S.partidos=null; S.ckItems=null; renderPartidos(); }
   });
 });
 
@@ -2888,12 +3086,21 @@ function buildCalEventos(){
     add(e.fecha,{tipo:e.tipo||'man', titulo:e.titulo||'Evento', monto:e.monto||0, id:e.id, fuente:'manual', desc:e.descripcion||''});
   });
 
+  // 4. Partidos del fixture
+  (S.partidos||[]).forEach(p=>{
+    if(!p.fecha) return;
+    const cats=(p.categorias||[]).join(', ');
+    const emoji=p.lv==='L'?'🏠':'✈️';
+    add(p.fecha,{tipo:'man', titulo:`${emoji} vs ${p.rival} (${cats})`, monto:0, id:p.id, fuente:'partido', desc:p.lugar||''});
+  });
+
   return evs;
 }
 
 async function renderCalendario(){
   // Cargar eventos manuales si no están
   if(!S.calEventos) { try{ S.calEventos=await fsGetCalEventos(); }catch(e){ S.calEventos=[]; } }
+  if(!S.partidos)   { try{ S.partidos=await fsGetPartidos();     }catch(e){ S.partidos=[];   } }
 
   const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   document.getElementById('cal-titulo').textContent=`${MESES[_calMonth]} ${_calYear}`;
@@ -3739,6 +3946,454 @@ async function confirmarEliminarRol(id,nombre){
   load(false);
 }
 window.confirmarEliminarRol=confirmarEliminarRol;
+
+// ══ CHECKLIST ══
+
+// ── Firestore ──
+async function fsGetPartidos(){ const s=await getDocs(collection(db,'partidos')); return s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')); }
+async function fsSavePartido(p){ await setDoc(doc(db,'partidos',p.id),p); }
+async function fsDeletePartido(id){ await deleteDoc(doc(db,'partidos',id)); }
+async function fsGetCkItems(){ const s=await getDocs(collection(db,'ck_items')); return s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.cat||'').localeCompare(b.cat||'')); }
+async function fsSaveCkItem(i){ await setDoc(doc(db,'ck_items',i.id),i); }
+async function fsDeleteCkItem(id){ await deleteDoc(doc(db,'ck_items',id)); }
+// Estado de checks por partido: colección 'partido_checks', doc = partidoId
+async function fsGetChecks(partidoId){ try{ const s=await getDoc(doc(db,'partido_checks',partidoId)); return s.exists()?s.data().checks:{};} catch(e){return{};} }
+async function fsSaveChecks(partidoId,checks){ await setDoc(doc(db,'partido_checks',partidoId),{checks}); }
+
+// ── Navegación ──
+let _ckTab='primera';
+function switchCK(tab){
+  _ckTab=tab;
+  document.querySelectorAll('.ck-tab').forEach(b=>b.classList.toggle('active',b.dataset.ck===tab));
+  document.querySelectorAll('.ck-panel').forEach(p=>p.classList.toggle('active',p.id==='ck-'+tab));
+  if(tab==='items') renderCkItems();
+  else renderPartidos();
+}
+window.switchCK=switchCK;
+
+// ── Render partidos ──
+async function renderPartidos(){
+  if(!S.partidos) { try{ S.partidos=await fsGetPartidos(); }catch(e){ S.partidos=[]; } }
+  if(!S.ckItems)  { try{ S.ckItems=await fsGetCkItems();   }catch(e){ S.ckItems=[];  } }
+
+  // Definir qué categorías muestra cada tab
+  const tabCats={
+    primera:   ['Primera División'],
+    juveniles: ['4ta División','5ta División','6ta División'],
+    juveniles2:['7ma División','8va División','9na División'],
+    inf2013:   ['Infantiles 2013'],
+    inf2014:   ['Infantiles 2014'],
+    inf2015:   ['Infantiles 2015'],
+    inf2016:   ['Infantiles 2016'],
+    todos: null
+  };
+  const allTabs=['primera','juveniles','juveniles2','inf2013','inf2014','inf2015','inf2016'];
+  const tabs = _ckTab==='todos' ? allTabs : [_ckTab];
+
+  const renderTab = async (tab) => {
+    const grid=document.getElementById('pg-'+tab);
+    const empty=document.getElementById('pg-'+tab+'-empty');
+    if(!grid) return;
+    const cats=tabCats[tab];
+    const filtered=S.partidos.filter(p=>{
+      if(!cats) return true;
+      return (p.categorias||[]).some(c=>cats.includes(c));
+    }).sort((a,b)=>a.fecha.localeCompare(b.fecha)); // más próximos primero
+
+    if(!filtered.length){ grid.innerHTML=''; if(empty) empty.style.display=''; return; }
+    if(empty) empty.style.display='none';
+
+    const cardsHtml = await Promise.all(filtered.map(p=>buildPartidoCard(p)));
+    grid.innerHTML = cardsHtml.join('');
+  };
+
+  for(const t of tabs) await renderTab(t);
+}
+window.renderPartidos=renderPartidos;
+
+async function buildPartidoCard(p){
+  const checks = await fsGetChecks(p.id);
+  const items = (S.ckItems||[]).filter(i=>{
+    if(i.aplica==='local' && p.lv!=='L') return false;
+    if(i.aplica==='visitante' && p.lv!=='V') return false;
+    return true;
+  });
+  const total=items.length, done=items.filter(i=>checks[i.id]?.checked).length;
+  const pct=total?Math.round(done/total*100):0;
+
+  const fechaFmt = p.fecha ? new Date(p.fecha+'T12:00:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) : '—';
+  const cats=(p.categorias||[]).map(c=>`<span class="pcard-cat">${x(c)}</span>`).join('');
+
+  // Badge de estado
+  const estadoBadge = p.estado==='suspendido'
+    ? `<span style="font-size:10px;font-weight:700;background:#fdf0f2;color:var(--red);padding:2px 7px;border-radius:20px">🚫 SUSPENDIDO</span>`
+    : p.estado==='postergado'
+    ? `<span style="font-size:10px;font-weight:700;background:var(--amber-lt);color:var(--amber);padding:2px 7px;border-radius:20px">⏸ POSTERGADO${p.nuevaFecha?' → '+new Date(p.nuevaFecha+'T12:00:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'}):''}
+</span>`
+    : '';
+
+  // Agrupar items por sección
+  const bySec={};
+  items.forEach(i=>{ const s=i.cat||'General'; if(!bySec[s]) bySec[s]=[]; bySec[s].push(i); });
+
+  let ckHtml='';
+  Object.entries(bySec).forEach(([sec,secItems])=>{
+    if(Object.keys(bySec).length>1) ckHtml+=`<div style="font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--txt3);margin:8px 0 4px">${x(sec)}</div>`;
+    secItems.forEach(i=>{
+      const ch=checks[i.id]||{};
+      const obs=ch.obs||'';
+      ckHtml+=`<div class="pcard-item">
+        <input type="checkbox" class="pcard-cb" ${ch.checked?'checked':''} onchange="toggleCheck('${p.id}','${i.id}',this.checked)" id="cb-${p.id}-${i.id}">
+        <div class="pcard-item-content">
+          <label class="pcard-item-label${ch.checked?' checked':''}" for="cb-${p.id}-${i.id}">${x(i.nombre)}</label>
+          ${obs?`<span class="pcard-obs-txt">${x(obs)}</span>`:''}
+          <input class="pcard-obs-input" id="obs-${p.id}-${i.id}" type="text" placeholder="Agregar observación…" value="${x(obs)}"
+            onfocus="this.style.display='block'" onblur="saveObs('${p.id}','${i.id}',this.value)">
+          <span class="pcard-obs-btn" onclick="document.getElementById('obs-${p.id}-${i.id}').style.display='block';document.getElementById('obs-${p.id}-${i.id}').focus()"
+            style="font-size:10px;color:var(--blue);cursor:pointer;display:${obs?'none':'inline'}">${obs?'':'+ obs'}</span>
+        </div>
+      </div>`;
+    });
+  });
+
+  if(!items.length) ckHtml=`<div style="color:var(--txt3);font-size:12px;padding:8px 0">Sin items base cargados. Agregá items en ⚙ Items base.</div>`;
+
+  return `<div class="partido-card ${p.lv==='L'?'local':'visitante'}${p.estado==='suspendido'?' suspendido':p.estado==='postergado'?' postergado':''}" id="card-${p.id}" style="${p.estado==='suspendido'?'opacity:.65':''}">
+    <div class="pcard-head">
+      <div>
+        <div class="pcard-fecha">${x(fechaFmt)}${p.hora?' · '+x(p.hora):''}</div>
+        <div class="pcard-rival">vs. ${x(p.rival)}</div>
+        <div class="pcard-cats">${cats}</div>
+        ${estadoBadge}
+        ${p.lugar?`<div style="font-size:11px;color:var(--txt3);margin-top:4px">📍 ${x(p.lugar)}</div>`:''}
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        <span class="pcard-lv ${p.lv}">${p.lv==='L'?'LOCAL':'VISIT.'}</span>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 8px" onclick="toggleEditFecha('${p.id}')">✏ Fecha</button>
+          <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 8px" onclick="openMoPartido('${p.id}')">Editar</button>
+        </div>
+      </div>
+    </div>
+    <!-- Panel edición rápida fecha/hora/estado -->
+    <div id="edit-fecha-${p.id}" style="display:none;padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap;align-items:flex-end">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div class="fg-row" style="margin:0;flex:1;min-width:130px"><label style="font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt3);margin-bottom:3px;display:block">Fecha</label>
+          <input type="date" id="ef-fecha-${p.id}" value="${p.fecha||''}" style="padding:6px 9px;border:1.5px solid var(--border2);border-radius:5px;font-size:12px;outline:none;width:100%">
+        </div>
+        <div class="fg-row" style="margin:0;width:90px"><label style="font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt3);margin-bottom:3px;display:block">Hora</label>
+          <input type="time" id="ef-hora-${p.id}" value="${p.hora||''}" style="padding:6px 9px;border:1.5px solid var(--border2);border-radius:5px;font-size:12px;outline:none;width:100%">
+        </div>
+        <div class="fg-row" style="margin:0;flex:1;min-width:140px"><label style="font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt3);margin-bottom:3px;display:block">Estado</label>
+          <select id="ef-estado-${p.id}" style="padding:6px 9px;border:1.5px solid var(--border2);border-radius:5px;font-size:12px;outline:none;width:100%">
+            <option value="normal" ${(p.estado||'normal')==='normal'?'selected':''}>✅ Confirmado</option>
+            <option value="suspendido" ${p.estado==='suspendido'?'selected':''}>🚫 Suspendido</option>
+            <option value="postergado" ${p.estado==='postergado'?'selected':''}>⏸ Postergado</option>
+          </select>
+        </div>
+        <div class="fg-row" id="ef-nf-wrap-${p.id}" style="margin:0;flex:1;min-width:130px;${p.estado!=='postergado'?'display:none':''}">
+          <label style="font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--txt3);margin-bottom:3px;display:block">Nueva fecha</label>
+          <input type="date" id="ef-nf-${p.id}" value="${p.nuevaFecha||''}" style="padding:6px 9px;border:1.5px solid var(--border2);border-radius:5px;font-size:12px;outline:none;width:100%">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="saveEditFecha('${p.id}')">Guardar</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleEditFecha('${p.id}')">×</button>
+      </div>
+    </div>
+    <div class="pcard-body">
+      ${items.length?`<div class="pcard-progress"><div class="pcard-progress-fill${pct===100?' done':''}" style="width:${pct}%"></div></div>`:''}
+      <div class="pcard-checklist">${ckHtml}</div>
+    </div>
+    <div class="pcard-footer">
+      <span>${done}/${total} completados${pct===100?' ✓':''}</span>
+      ${p.obs?`<span style="font-style:italic;font-size:11px">${x(p.obs)}</span>`:''}
+    </div>
+  </div>`;
+}
+
+// ── Toggle check ──
+async function toggleCheck(partidoId, itemId, checked){
+  const checks = await fsGetChecks(partidoId);
+  if(!checks[itemId]) checks[itemId]={};
+  checks[itemId].checked=checked;
+  await fsSaveChecks(partidoId, checks);
+  // Actualizar label visualmente sin re-render completo
+  const label=document.querySelector(`label[for="cb-${partidoId}-${itemId}"]`);
+  if(label) label.classList.toggle('checked',checked);
+  // Actualizar barra de progreso
+  const card=document.getElementById('card-'+partidoId);
+  if(card){
+    const cbs=card.querySelectorAll('.pcard-cb'), done=[...cbs].filter(c=>c.checked).length, total=cbs.length;
+    const fill=card.querySelector('.pcard-progress-fill');
+    const footer=card.querySelector('.pcard-footer span');
+    const pct=total?Math.round(done/total*100):0;
+    if(fill){ fill.style.width=pct+'%'; fill.classList.toggle('done',pct===100); }
+    if(footer) footer.textContent=`${done}/${total} completados${pct===100?' ✓':''}`;
+  }
+}
+window.toggleCheck=toggleCheck;
+
+async function saveObs(partidoId, itemId, val){
+  const checks = await fsGetChecks(partidoId);
+  if(!checks[itemId]) checks[itemId]={};
+  checks[itemId].obs=val.trim();
+  await fsSaveChecks(partidoId, checks);
+  const txt=document.querySelector(`#obs-${partidoId}-${itemId}`);
+  const span=txt?.parentElement?.querySelector('.pcard-obs-txt');
+  const btn=txt?.parentElement?.querySelector('.pcard-obs-btn');
+  if(span){ span.textContent=val.trim(); span.style.display=val.trim()?'':'none'; }
+  if(btn) btn.style.display=val.trim()?'none':'inline';
+  if(txt) txt.style.display='none';
+}
+window.saveObs=saveObs;
+
+// ── Edición rápida fecha/hora/estado ──
+function toggleEditFecha(pid){
+  const panel=document.getElementById('edit-fecha-'+pid);
+  if(!panel) return;
+  const open=panel.style.display==='flex';
+  panel.style.display=open?'none':'flex';
+}
+window.toggleEditFecha=toggleEditFecha;
+
+// Mostrar/ocultar campo nueva fecha según estado
+document.addEventListener('change',e=>{
+  if(e.target.id&&e.target.id.startsWith('ef-estado-')){
+    const pid=e.target.id.replace('ef-estado-','');
+    const wrap=document.getElementById('ef-nf-wrap-'+pid);
+    if(wrap) wrap.style.display=e.target.value==='postergado'?'':'none';
+  }
+});
+
+async function saveEditFecha(pid){
+  const p=(S.partidos||[]).find(z=>z.id===pid); if(!p) return;
+  const fecha=document.getElementById('ef-fecha-'+pid)?.value||p.fecha;
+  const hora=document.getElementById('ef-hora-'+pid)?.value||'';
+  const estado=document.getElementById('ef-estado-'+pid)?.value||'normal';
+  const nuevaFecha=document.getElementById('ef-nf-'+pid)?.value||'';
+  load(true);
+  try {
+    const updated={...p, fecha, hora, estado, nuevaFecha:estado==='postergado'?nuevaFecha:''};
+    await fsSavePartido(updated);
+    S.partidos=await fsGetPartidos();
+    toggleEditFecha(pid);
+    await renderPartidos();
+    toast('Partido actualizado');
+  } catch(e){ toast('Error',true); }
+  load(false);
+}
+window.saveEditFecha=saveEditFecha;
+
+// ── Toggle estado en modal ──
+window.togglePartidoEstado=()=>{
+  const v=document.getElementById('part-estado').value;
+  const wrap=document.getElementById('part-nueva-fecha-wrap');
+  if(wrap) wrap.style.display=v==='postergado'?'flex':'none';
+};
+
+// ── Importar fixture desde XLS ──
+window.dlFixtureTemplate=()=>{
+  const data=[
+    ['rival','fecha','hora','lv','categorias','lugar','obs'],
+    ['Deportivo Morón','2026-05-10','15:00','L','Primera División','Noble GEBA',''],
+    ['San Lorenzo','2026-05-17','16:00','V','4ta División,5ta División,6ta División','','Cancha visitante'],
+    ['Defensores','2026-05-24','14:00','L','7ma División,8va División,9na División','Excursionistas',''],
+    ['Platense','2026-06-01','11:00','L','Infantiles 2013','Noble GEBA',''],
+  ];
+  const ws=XLSX.utils.aoa_to_sheet(data), wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Fixture');
+  XLSX.writeFile(wb,'BFC_Fixture_Template.xlsx');
+};
+
+window.importFixture=async(input)=>{
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    load(true);
+    try {
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length){ toast('Archivo vacío',true); load(false); return; }
+      let added=0, errors=0;
+      for(const r of rows){
+        if(!r.rival||!r.fecha){ errors++; continue; }
+        // Parsear categorias: puede ser "4ta División,5ta División" o celda separada por comas
+        const cats=String(r.categorias||'').split(',').map(c=>c.trim()).filter(Boolean);
+        if(!cats.length){ errors++; continue; }
+        // Normalizar fecha (puede venir como número serial de Excel)
+        let fecha=String(r.fecha||'');
+        if(/^\d{5}$/.test(fecha)){
+          // Serial de Excel → fecha
+          const d=new Date((parseInt(fecha)-25569)*86400*1000);
+          fecha=d.toISOString().slice(0,10);
+        } else if(fecha.includes('/')){
+          const parts=fecha.split('/');
+          if(parts.length===3) fecha=`${parts[2].padStart(4,'20')}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+        }
+        const p={
+          id:autoId(), rival:String(r.rival).trim(),
+          fecha, hora:String(r.hora||'').trim(),
+          lv:String(r.lv||'L').trim().toUpperCase()==='V'?'V':'L',
+          categorias:cats, lugar:String(r.lugar||'').trim(),
+          obs:String(r.obs||'').trim(), estado:'normal', nuevaFecha:'',
+          creadoEn:new Date().toISOString()
+        };
+        try{ await fsSavePartido(p); added++; }catch(e){ errors++; }
+      }
+      S.partidos=await fsGetPartidos();
+      await renderPartidos();
+      toast(`Importado: ${added} partidos${errors?' · '+errors+' errores':''}`);
+    } catch(e){ toast('Error al leer el archivo',true); }
+    load(false);
+    input.value='';
+  };
+  reader.readAsBinaryString(file);
+};
+
+function openMoPartido(id){
+  const p=id?(S.partidos||[]).find(z=>z.id===id):null;
+  document.getElementById('mo-part-title').textContent=p?'Editar Partido':'Nuevo Partido';
+  document.getElementById('part-id').value=p?.id||'';
+  document.getElementById('part-rival').value=p?.rival||'';
+  document.getElementById('part-fecha').value=p?.fecha||new Date().toISOString().slice(0,10);
+  document.getElementById('part-hora').value=p?.hora||'';
+  document.getElementById('part-estado').value=p?.estado||'normal';
+  document.getElementById('part-nueva-fecha').value=p?.nuevaFecha||'';
+  document.getElementById('part-nueva-fecha-wrap').style.display=p?.estado==='postergado'?'flex':'none';
+  document.getElementById('part-lv').value=p?.lv||'L';
+  document.getElementById('part-lugar').value=p?.lugar||'';
+  document.getElementById('part-obs').value=p?.obs||'';
+  document.querySelectorAll('.part-cat-cb').forEach(cb=>{ cb.checked=(p?.categorias||[]).includes(cb.value); });
+  document.getElementById('part-del-btn').style.display=p?'':'none';
+  document.getElementById('mo-partido').classList.add('open');
+}
+window.openMoPartido=openMoPartido;
+window.closeMoPartido=()=>document.getElementById('mo-partido').classList.remove('open');
+
+window.setCatPreset=(preset)=>{
+  document.querySelectorAll('.part-cat-cb').forEach(cb=>cb.checked=false);
+  const map={
+    '46':['4ta División','5ta División','6ta División'],
+    '79':['7ma División','8va División','9na División'],
+    'inf':['Infantiles 2013','Infantiles 2014','Infantiles 2015','Infantiles 2016']
+  };
+  (map[preset]||[]).forEach(v=>{ const cb=document.querySelector(`.part-cat-cb[value="${v}"]`); if(cb) cb.checked=true; });
+};
+
+async function savePartido(){
+  const rival=document.getElementById('part-rival').value.trim();
+  const fecha=document.getElementById('part-fecha').value;
+  const cats=[...document.querySelectorAll('.part-cat-cb:checked')].map(c=>c.value);
+  if(!rival){ toast('Ingresá el rival',true); return; }
+  if(!fecha){ toast('Ingresá la fecha',true); return; }
+  if(!cats.length){ toast('Seleccioná al menos una categoría',true); return; }
+  const estado=document.getElementById('part-estado').value||'normal';
+  const p={
+    id:document.getElementById('part-id').value||autoId(),
+    rival, fecha, hora:document.getElementById('part-hora').value,
+    lv:document.getElementById('part-lv').value,
+    categorias:cats, lugar:document.getElementById('part-lugar').value,
+    obs:document.getElementById('part-obs').value,
+    estado, nuevaFecha:estado==='postergado'?(document.getElementById('part-nueva-fecha').value||''):'',
+    creadoEn:new Date().toISOString()
+  };
+  load(true);
+  try {
+    await fsSavePartido(p);
+    S.partidos=await fsGetPartidos();
+    window.closeMoPartido();
+    await renderPartidos();
+    toast('Partido guardado');
+  } catch(e){ toast('Error: '+e.message,true); }
+  load(false);
+}
+window.savePartido=savePartido;
+
+async function eliminarPartido(){
+  const id=document.getElementById('part-id').value;
+  if(!confirm('¿Eliminar este partido?')) return;
+  load(true);
+  try {
+    await fsDeletePartido(id);
+    try{ await deleteDoc(doc(db,'partido_checks',id)); }catch(e){}
+    S.partidos=await fsGetPartidos();
+    window.closeMoPartido();
+    await renderPartidos();
+    toast('Partido eliminado');
+  } catch(e){ toast('Error',true); }
+  load(false);
+}
+window.eliminarPartido=eliminarPartido;
+
+// ── Items base ──
+async function renderCkItems(){
+  if(!S.ckItems){ try{ S.ckItems=await fsGetCkItems(); }catch(e){ S.ckItems=[]; } }
+  const cont=document.getElementById('ck-items-list');
+  if(!S.ckItems.length){
+    cont.innerHTML=`<div style="color:var(--txt3);font-size:13px;padding:16px 0">Sin items. Agregá los elementos que querés verificar antes de cada partido.</div>`;
+    return;
+  }
+  const bySec={},secOrder=[];
+  S.ckItems.forEach(i=>{ const s=i.cat||'General'; if(!bySec[s]){bySec[s]=[];secOrder.push(s);} bySec[s].push(i); });
+  cont.innerHTML=secOrder.map(sec=>`
+    <div style="margin-bottom:16px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);margin-bottom:8px;display:flex;align-items:center;gap:8px">${x(sec)}<span style="flex:1;height:1px;background:var(--border);display:inline-block"></span></div>
+      ${bySec[sec].map(i=>`
+        <div class="ck-item-row">
+          <span class="ck-item-nombre">${x(i.nombre)}</span>
+          ${i.cat?`<span class="ck-item-cat">${x(i.cat)}</span>`:''}
+          <span style="font-size:11px;color:var(--txt3)">${i.aplica==='local'?'Solo local':i.aplica==='visitante'?'Solo visitante':'Todos'}</span>
+          <button class="btn btn-ghost btn-sm" onclick="openMoCkItem('${i.id}')">Editar</button>
+          <button class="btn btn-danger btn-sm" onclick="eliminarCkItem('${i.id}')">×</button>
+        </div>`).join('')}
+    </div>`).join('');
+}
+window.renderCkItems=renderCkItems;
+
+function openMoCkItem(id){
+  const i=id?(S.ckItems||[]).find(z=>z.id===id):null;
+  document.getElementById('mo-cki-title').textContent=i?'Editar Item':'Nuevo Item';
+  document.getElementById('cki-id').value=i?.id||'';
+  document.getElementById('cki-nombre').value=i?.nombre||'';
+  document.getElementById('cki-cat').value=i?.cat||'';
+  document.getElementById('cki-aplica').value=i?.aplica||'todos';
+  document.getElementById('cki-del-btn').style.display=i?'':'none';
+  document.getElementById('mo-ck-item').classList.add('open');
+}
+window.openMoCkItem=openMoCkItem;
+window.closeMoCkItem=()=>document.getElementById('mo-ck-item').classList.remove('open');
+
+async function saveCkItem(){
+  const nombre=document.getElementById('cki-nombre').value.trim();
+  if(!nombre){ toast('Nombre requerido',true); return; }
+  const i={
+    id:document.getElementById('cki-id').value||autoId(),
+    nombre, cat:document.getElementById('cki-cat').value.trim(),
+    aplica:document.getElementById('cki-aplica').value
+  };
+  load(true);
+  try {
+    await fsSaveCkItem(i);
+    S.ckItems=await fsGetCkItems();
+    window.closeMoCkItem(); renderCkItems(); toast('Item guardado');
+  } catch(e){ toast('Error',true); }
+  load(false);
+}
+window.saveCkItem=saveCkItem;
+
+async function eliminarCkItem(id){
+  const eid=id||document.getElementById('cki-id').value;
+  if(!confirm('¿Eliminar este item?')) return;
+  load(true);
+  try {
+    await fsDeleteCkItem(eid);
+    S.ckItems=await fsGetCkItems();
+    if(!id) window.closeMoCkItem();
+    renderCkItems(); toast('Eliminado');
+  } catch(e){ toast('Error',true); }
+  load(false);
+}
+window.eliminarCkItem=eliminarCkItem;
 
 // ── HELPERS RENDER ──
 function renderBar(id,data,max,color=''){
