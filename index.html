@@ -416,8 +416,13 @@ tr.group-hd:hover{background:var(--bg3)!important}
       <div class="stats">
         <div class="sc green"><div class="lbl">Ingresos (mes actual)</div><div class="val" id="d-ing">—</div></div>
         <div class="sc red"><div class="lbl">Egresos (mes actual)</div><div class="val" id="d-egr">—</div></div>
-        <div class="sc blue"><div class="lbl">Balance Neto</div><div class="val" id="d-balance">—</div><div class="sub" id="d-balance-sub">—</div></div>
+        <div class="sc blue"><div class="lbl">Balance Neto Mes</div><div class="val" id="d-balance">—</div><div class="sub" id="d-balance-sub">—</div></div>
         <div class="sc amber"><div class="lbl">Sponsors Activos</div><div class="val" id="d-sponsors">—</div><div class="sub" id="d-sponsors-monto">—</div></div>
+      </div>
+      <div class="stats" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
+        <div class="sc green" style="border-left:4px solid #0e7a3c"><div class="lbl">Ingresos (año)</div><div class="val" id="d-ing-anio">—</div></div>
+        <div class="sc red" style="border-left:4px solid #9a0a1e"><div class="lbl">Egresos (año)</div><div class="val" id="d-egr-anio">—</div></div>
+        <div class="sc blue" style="border-left:4px solid #1a47b8"><div class="lbl">Balance Neto Año</div><div class="val" id="d-balance-anio">—</div><div class="sub" id="d-balance-anio-sub">—</div></div>
       </div>
 
       <div class="dash-section-title">Fondos Disponibles <button class="btn btn-ghost btn-sm" style="font-size:10px;margin-left:8px;text-transform:none;letter-spacing:0" onclick="openMoCaja()">✏ Editar</button></div>
@@ -450,9 +455,17 @@ tr.group-hd:hover{background:var(--bg3)!important}
         <div class="dbb-legend" id="dash-egr-legend"></div>
       </div>
 
+      <div class="dash-balance-bar" style="margin-top:12px">
+        <div class="dbb-title">Composición de Ingresos — Mes Actual</div>
+        <div class="dbb-track" id="dash-ing-bar"></div>
+        <div class="dbb-legend" id="dash-ing-legend"></div>
+      </div>
+
       <div class="charts">
-        <div class="cb"><h4>Ingresos por Tipo</h4><div class="bar-chart" id="dash-ch-ing"></div></div>
-        <div class="cb"><h4>Egresos por Tipo</h4><div class="bar-chart" id="dash-ch-egr"></div></div>
+        <div class="cb"><h4>Ingresos por Tipo — Mes</h4><div class="bar-chart" id="dash-ch-ing"></div></div>
+        <div class="cb"><h4>Egresos por Tipo — Mes</h4><div class="bar-chart" id="dash-ch-egr"></div></div>
+        <div class="cb"><h4>Ingresos por Tipo — Año <span id="dash-anio-lbl" style="font-weight:400;color:var(--txt3)"></span></h4><div class="bar-chart" id="dash-ch-ing-anio"></div></div>
+        <div class="cb"><h4>Egresos por Tipo — Año</h4><div class="bar-chart" id="dash-ch-egr-anio"></div></div>
       </div>
     </div>
 
@@ -838,7 +851,7 @@ tr.group-hd:hover{background:var(--bg3)!important}
         </div>
         <div class="tw"><table>
           <thead><tr>
-            <th class="sortable" onclick="setSortT('fecha')">Fecha</th>
+            <th class="sortable" onclick="setSortT('fecha')" style="white-space:nowrap;width:90px">Fecha</th>
             <th class="sortable" onclick="setSortT('tipo')">Tipo</th>
             <th>Descripción</th>
             <th>Área</th>
@@ -2539,6 +2552,19 @@ function renderDashboard(){
   const balEl=document.getElementById('d-balance');
   balEl.textContent=f(Math.abs(balance)); balEl.style.color=balance>=0?'var(--green)':'var(--red)';
   st('d-balance-sub',balance>=0?'Superávit':'Déficit');
+
+  // ── Año corriente ──
+  const prefixAnio=`${now.getFullYear()}`;
+  const transAnio=S.transacciones.filter(t=>(t.fecha||'').startsWith(prefixAnio));
+  const ingAnio=transAnio.filter(t=>t.clase==='Ingreso').reduce((s,t)=>s+(t.monto||0),0);
+  const egrAnio=transAnio.filter(t=>t.clase==='Egreso').reduce((s,t)=>s+(t.monto||0),0);
+  const balAnio=ingAnio-egrAnio;
+  st('d-ing-anio',f(ingAnio)); st('d-egr-anio',f(egrAnio));
+  const balAnioEl=document.getElementById('d-balance-anio');
+  if(balAnioEl){ balAnioEl.textContent=f(Math.abs(balAnio)); balAnioEl.style.color=balAnio>=0?'var(--green)':'var(--red)'; }
+  st('d-balance-anio-sub',balAnio>=0?'Superávit':'Déficit');
+  st('dash-anio-lbl', now.getFullYear());
+
   const spAct=S.sponsors.filter(s=>s.estado==='Activo');
   st('d-sponsors',spAct.length); st('d-sponsors-monto',f(spAct.reduce((s,z)=>s+(z.monto||0),0))+'/mes');
   // Caja
@@ -2555,20 +2581,45 @@ function renderDashboard(){
     const fp=t.fechaPago||t.fecha||'—'; const vencida=fp<new Date().toISOString().slice(0,10);
     return`<tr style="${vencida?'background:var(--red-lt)':''}"><td class="nm" style="padding:9px 14px">${x(prov?.nombre||t.proveedorNombre||'Sin proveedor')}</td><td style="padding:9px 14px;font-size:13px;color:var(--txt2)">${x(t.descripcion||t.tipoNombre||'—')}</td><td style="padding:9px 14px;font-family:var(--mono);font-size:12px;color:${vencida?'var(--red)':'var(--txt2)'}">${fp} ${vencida?'⚠':''}</td><td style="padding:9px 14px;font-family:var(--mono);font-weight:700;color:var(--red)">${f(t.monto)}</td></tr>`;
   }).join('');
-  // Barra de egresos
+
+  // ── Barras de composición ──
+  const COLORS=['#C8102E','#2563eb','#d97706','#16a34a','#7c3aed','#0891b2','#db2777','#65a30d'];
+  const ING_COLORS=['#16a34a','#0891b2','#d97706','#7c3aed','#2563eb','#C8102E','#65a30d','#db2777'];
+
+  // Egresos mes
   const egrPorTipo={};
   transMes.filter(t=>t.clase==='Egreso').forEach(t=>{const n=t.tipoNombre||'Otro';egrPorTipo[n]=(egrPorTipo[n]||0)+(t.monto||0);});
-  const COLORS=['#C8102E','#2563eb','#d97706','#16a34a','#7c3aed','#0891b2','#db2777','#65a30d'];
-  const sorted=Object.entries(egrPorTipo).sort((a,b)=>b[1]-a[1]);
+  const sortedEgr=Object.entries(egrPorTipo).sort((a,b)=>b[1]-a[1]);
   const bar=document.getElementById('dash-egr-bar'), legend=document.getElementById('dash-egr-legend');
-  if(!sorted.length){ bar.innerHTML='<div style="flex:1;background:var(--bg3);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--txt3)">Sin egresos este mes</div>'; legend.innerHTML=''; }
+  if(!sortedEgr.length){ bar.innerHTML='<div style="flex:1;background:var(--bg3);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--txt3)">Sin egresos este mes</div>'; legend.innerHTML=''; }
   else {
-    bar.innerHTML=sorted.map(([nombre,v],i)=>{ const pct=egrMes?Math.round(v/egrMes*100):0; const col=COLORS[i%COLORS.length]; return`<div class="dbb-seg" style="width:${pct}%;background:${col}"><span style="color:#fff;overflow:hidden;padding:0 4px;white-space:nowrap;font-size:10px">${pct>8?pct+'%':''}</span></div>`; }).join('');
-    legend.innerHTML=sorted.map(([nombre,v],i)=>`<div class="dbb-leg-item"><div class="dbb-dot" style="background:${COLORS[i%COLORS.length]}"></div>${x(nombre)}: <strong style="color:var(--txt);margin-left:2px">${f(v)}</strong></div>`).join('');
+    bar.innerHTML=sortedEgr.map(([nombre,v],i)=>{ const pct=egrMes?Math.round(v/egrMes*100):0; const col=COLORS[i%COLORS.length]; return`<div class="dbb-seg" style="width:${pct}%;background:${col}"><span style="color:#fff;overflow:hidden;padding:0 4px;white-space:nowrap;font-size:10px">${pct>8?pct+'%':''}</span></div>`; }).join('');
+    legend.innerHTML=sortedEgr.map(([nombre,v],i)=>`<div class="dbb-leg-item"><div class="dbb-dot" style="background:${COLORS[i%COLORS.length]}"></div>${x(nombre)}: <strong style="color:var(--txt);margin-left:2px">${f(v)}</strong></div>`).join('');
   }
+
+  // Ingresos mes (barra)
   const ingPorTipo={};
   transMes.filter(t=>t.clase==='Ingreso').forEach(t=>{const n=t.tipoNombre||'Otro';ingPorTipo[n]=(ingPorTipo[n]||0)+(t.monto||0);});
-  renderBar('dash-ch-ing',ingPorTipo,ingMes,'green'); renderBar('dash-ch-egr',egrPorTipo,egrMes);
+  const sortedIng=Object.entries(ingPorTipo).sort((a,b)=>b[1]-a[1]);
+  const barI=document.getElementById('dash-ing-bar'), legendI=document.getElementById('dash-ing-legend');
+  if(barI){
+    if(!sortedIng.length){ barI.innerHTML='<div style="flex:1;background:var(--bg3);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--txt3)">Sin ingresos este mes</div>'; legendI.innerHTML=''; }
+    else {
+      barI.innerHTML=sortedIng.map(([nombre,v],i)=>{ const pct=ingMes?Math.round(v/ingMes*100):0; const col=ING_COLORS[i%ING_COLORS.length]; return`<div class="dbb-seg" style="width:${pct}%;background:${col}"><span style="color:#fff;overflow:hidden;padding:0 4px;white-space:nowrap;font-size:10px">${pct>8?pct+'%':''}</span></div>`; }).join('');
+      legendI.innerHTML=sortedIng.map(([nombre,v],i)=>`<div class="dbb-leg-item"><div class="dbb-dot" style="background:${ING_COLORS[i%ING_COLORS.length]}"></div>${x(nombre)}: <strong style="color:var(--txt);margin-left:2px">${f(v)}</strong></div>`).join('');
+    }
+  }
+
+  // Charts mes
+  renderBar('dash-ch-ing',ingPorTipo,ingMes,'green');
+  renderBar('dash-ch-egr',egrPorTipo,egrMes);
+
+  // Charts año
+  const ingAnioPorTipo={}, egrAnioPorTipo={};
+  transAnio.filter(t=>t.clase==='Ingreso').forEach(t=>{const n=t.tipoNombre||'Otro';ingAnioPorTipo[n]=(ingAnioPorTipo[n]||0)+(t.monto||0);});
+  transAnio.filter(t=>t.clase==='Egreso').forEach(t=>{const n=t.tipoNombre||'Otro';egrAnioPorTipo[n]=(egrAnioPorTipo[n]||0)+(t.monto||0);});
+  renderBar('dash-ch-ing-anio',ingAnioPorTipo,ingAnio,'green');
+  renderBar('dash-ch-egr-anio',egrAnioPorTipo,egrAnio);
 }
 window.renderDashboard = renderDashboard;
 
@@ -2857,7 +2908,7 @@ function renderTransacciones(){
     const tipo=S.tipos.find(z=>z.id===t.tipoId), esIng=t.clase==='Ingreso';
     const estadoBadge=t.estadoPago==='Pendiente'?'<span class="badge b-egreso">Pendiente</span>':t.estadoPago==='Programado'?'<span class="badge bb">Programado</span>':'<span class="badge bactivo">Pagado</span>';
     return`<tr class="trans-row-${esIng?'ingreso':'egreso'}" onclick="openMoTransaccion('${t.id}')">
-      <td class="mo" style="font-size:12px">${t.fecha||'—'}</td>
+      <td class="mo" style="font-size:11px;white-space:nowrap;width:90px">${t.fecha?t.fecha.split('-').reverse().join('/'):' —'}</td>
       <td><span class="badge ${esIng?'b-ingreso':'b-egreso'}">${esIng?'▲':'▼'} ${x(tipo?.nombre||t.tipoNombre||'—')}</span></td>
       <td style="color:var(--txt2);max-width:180px;overflow:hidden;text-overflow:ellipsis">${x(t.proveedorNombre||t.descripcion||'—')}</td>
       <td><span class="badge bd">${x(t.area||'—')}</span></td>
