@@ -556,6 +556,7 @@ tr.group-hd:hover{background:var(--bg3)!important}
           </div>
           <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
             <div class="fg-row" style="flex:1;min-width:180px"><label>Período *</label><input id="pp" type="text" placeholder="Ej: Marzo 2026"></div>
+            <div class="fg-row" style="min-width:150px"><label>Fecha de pago *</label><input id="pp-fecha" type="date"></div>
             <div class="fg-row" style="flex:1"><label>Filtrar categoría</label>
               <select id="pp-cat" onchange="filtrarPagoGrid()" class="fi" style="padding:9px 11px">
                 <option value="">Todas</option><option>Primera División</option><option>Reserva</option><option>4ta División</option><option>5ta División</option><option>6ta División</option><option>7ma División</option><option>8va División</option><option>9na División</option>
@@ -1159,7 +1160,17 @@ tr.group-hd:hover{background:var(--bg3)!important}
         <div class="fg-row"><label>Monto ($) *</label><input id="tr-monto" type="number" min="0" placeholder="0"></div>
         <div class="fg-row"><label>Proveedor (si es egreso)</label><select id="tr-proveedor"><option value="">Sin proveedor</option></select></div>
         <div class="fg-row"><label>Área</label><select id="tr-area"><option value="General">General</option><option value="Primera">Primera</option><option value="Inferiores">Inferiores</option></select></div>
-        <div class="fg-row"><label>Factura</label><select id="tr-fac"><option value="No">Sin factura</option><option value="Si">Con factura</option></select></div>
+        <div class="fg-row"><label>Factura</label>
+          <select id="tr-fac" onchange="onTrFacChange()">
+            <option value="No">Sin factura</option>
+            <option value="Si">Con factura</option>
+            <option value="Mixta">Mixta (parcial)</option>
+          </select>
+        </div>
+        <div class="fg-row" id="tr-fac-mixta-wrap" style="display:none">
+          <label>Monto con factura ($)</label>
+          <input id="tr-fac-mixta-monto" type="number" min="0" placeholder="0" style="font-family:var(--mono)">
+        </div>
         <div class="fg-row" id="tr-fac-entregada-wrap" style="display:none"><label>¿Factura entregada?</label>
           <select id="tr-fac-entregada">
             <option value="No">❌ Pendiente</option>
@@ -2106,8 +2117,8 @@ async function showNuevoPago(pagoId){
   document.getElementById('pp-cat').value='';
   const activos=S.personal.filter(p=>p.estado==='Activo');
   let detMap={};
-  if(pagoId){ const pago=S.pagos.find(p=>p.id===pagoId); document.getElementById('pp').value=pago?.periodo||''; document.getElementById('po').value=pago?.observaciones||''; (pago?.detalles||[]).forEach(d=>{detMap[d.personaId]={monto:d.monto,medio:d.medio};}); }
-  else { document.getElementById('pp').value=''; document.getElementById('po').value=''; }
+  if(pagoId){ const pago=S.pagos.find(p=>p.id===pagoId); document.getElementById('pp').value=pago?.periodo||''; document.getElementById('pp-fecha').value=pago?.fechaPago||''; document.getElementById('po').value=pago?.observaciones||''; (pago?.detalles||[]).forEach(d=>{detMap[d.personaId]={monto:d.monto,medio:d.medio};}); }
+  else { document.getElementById('pp').value=''; document.getElementById('pp-fecha').value=new Date().toISOString().slice(0,10); document.getElementById('po').value=''; }
   const groups={},order=[];
   activos.forEach(p=>{ if(!groups[p.nombre]){groups[p.nombre]=[];order.push(p.nombre);} groups[p.nombre].push(p); });
   const pgrid=document.getElementById('pgrid'); pgrid.innerHTML='';
@@ -2147,28 +2158,55 @@ window.calcPagTotal = calcPagTotal;
 async function guardarPago(){
   const periodo=document.getElementById('pp').value.trim();
   if(!periodo){ toast('Ingresá el período',true); return; }
+  const fechaPago=document.getElementById('pp-fecha').value||new Date().toISOString().slice(0,10);
   const detalles=[];
   document.querySelectorAll('.pgr').forEach(r=>{ if(r.style.display!=='none'&&r.querySelector('.pc').checked) detalles.push({personaId:r.dataset.id,nombre:r.dataset.nombre,monto:parseFloat(r.querySelector('.pm').value)||0,medio:r.querySelector('.pmed')?.value||'Efectivo'}); });
   if(!detalles.length){ toast('Seleccioná al menos una persona',true); return; }
   const id=S.pagoEditId||autoId();
-  const fecha=new Date().toLocaleDateString('es-AR');
+  const esNuevo=!S.pagoEditId;
+  const fechaDisplay=new Date(fechaPago+'T12:00:00').toLocaleDateString('es-AR');
   const total=detalles.reduce((s,d)=>s+(Number(d.monto)||0),0);
   load(true);
   try {
-    await fsGuardarPago(id,{id,fecha,periodo,totalAbonado:total,observaciones:document.getElementById('po').value||'',detalles});
+    await fsGuardarPago(id,{id,fecha:fechaDisplay,fechaPago,periodo,totalAbonado:total,observaciones:document.getElementById('po').value||'',detalles});
     S.pagos=await fsGetPagos();
     window.hidePagoForm(); renderPagos();
-    const esNuevo = !S.pagoEditId;
     toast(esNuevo?'Pago registrado':'Pago actualizado');
-    // Snapshot automático solo al crear un pago nuevo
-    if (esNuevo) {
-      const periodo = document.getElementById('pp').value||'Sin período';
-      try { await tomarSnapshot(`Pago — ${periodo}`); } catch(e){}
+    if(esNuevo){
+      try{ await tomarSnapshot(`Pago — ${periodo}`); }catch(e){}
+      // Ofrecer crear transacción
+      load(false);
+      setTimeout(()=>{
+        if(confirm(`¿Agregar este pago como transacción en Contabilidad?\n\nConcepto: Viáticos / Sueldos — ${periodo}\nFecha: ${fechaDisplay}\nTotal: ${f(total)}`)){
+          crearTransaccionDesdePago({periodo, fecha:fechaPago, total, obs:document.getElementById('po').value||''});
+        }
+      }, 200);
+      return;
     }
   } catch(e){ toast('Error: '+e.message,true); }
   load(false);
 }
 window.guardarPago = guardarPago;
+
+async function crearTransaccionDesdePago({periodo, fecha, total, obs}){
+  // Buscar tipo "Sueldos" o similar, si no usar el primero de tipo Egreso
+  const tipoSueldos=S.tipos.find(t=>t.clase==='Egreso'&&(/sueldo|viático|viatic/i.test(t.nombre)))||S.tipos.find(t=>t.clase==='Egreso');
+  if(!tipoSueldos){ toast('No hay tipos de Egreso. Creá uno primero.',true); return; }
+  const trans={
+    id:autoId(), tipoId:tipoSueldos.id, tipoNombre:tipoSueldos.nombre, clase:'Egreso',
+    fecha, descripcion:`Viáticos / Sueldos — ${periodo}`,
+    monto:total, area:'General', factura:'No', facturaEntregada:'No',
+    medio:'Transferencia', estadoPago:'Pagado', fechaPago:fecha,
+    proveedorId:'', proveedorNombre:'', observaciones:obs,
+    creadoEn:new Date().toISOString()
+  };
+  try{
+    await fsSaveTrans(trans);
+    S.transacciones=await fsGetTrans();
+    renderDashboard();
+    toast(`Transacción creada: Viáticos / Sueldos — ${periodo}`);
+  }catch(e){ toast('Error al crear transacción: '+e.message,true); }
+}
 
 async function eliminarPagoActual(){
   const pago=S.pagos.find(p=>p.id===S.pagoEditId);
@@ -2862,7 +2900,8 @@ async function saveTransaccion(){
     fecha, descripcion:document.getElementById('tr-desc').value,
     monto, area:document.getElementById('tr-area').value,
     factura:document.getElementById('tr-fac').value,
-    facturaEntregada: document.getElementById('tr-fac').value==='Si' ? (document.getElementById('tr-fac-entregada').value||'No') : 'No',
+    facturaEntregada: ['Si','Mixta'].includes(document.getElementById('tr-fac').value) ? (document.getElementById('tr-fac-entregada').value||'No') : 'No',
+    facturaMontoConFac: document.getElementById('tr-fac').value==='Mixta' ? (parseFloat(document.getElementById('tr-fac-mixta-monto').value)||0) : 0,
     medio:document.getElementById('tr-medio').value,
     estadoPago, fechaPago:document.getElementById('tr-fecha-pago').value||'',
     proveedorId:provId||'', proveedorNombre:prov?.nombre||'',
@@ -2918,6 +2957,10 @@ function renderTransacciones(){
         ? `<span class="badge b-fac">FAC</span> ${t.facturaEntregada==='Si'
             ? '<span style="color:var(--green);font-size:11px">✓</span>'
             : '<span style="color:var(--red);font-size:11px" title="Factura pendiente">⚠</span>'}`
+        : t.factura==='Mixta'
+        ? `<span class="badge bb">MIXTA</span> ${t.facturaEntregada==='Si'
+            ? '<span style="color:var(--green);font-size:11px">✓</span>'
+            : '<span style="color:var(--red);font-size:11px">⚠</span>'}`
         : '<span style="color:var(--txt3);font-size:12px">—</span>'}</td>
       <td>${estadoBadge}</td>
       <td class="mo-total" style="color:${esIng?'var(--green)':'var(--red)'}">${f(t.monto)}</td>
@@ -2940,9 +2983,12 @@ function openMoTransaccion(id){
   document.getElementById('tr-area').value=t?.area||'General';
   document.getElementById('tr-fac').value=t?.factura||'No';
   document.getElementById('tr-fac-entregada').value=t?.facturaEntregada||'No';
-  const esFac=(t?.factura||'No')==='Si';
+  document.getElementById('tr-fac-mixta-monto').value=t?.facturaMontoConFac||'';
+  const val=t?.factura||'No';
+  const esFac=val==='Si'||val==='Mixta';
   document.getElementById('tr-fac-entregada-wrap').style.display=esFac?'flex':'none';
   document.getElementById('tr-drive-btn').style.display=esFac?'':'none';
+  document.getElementById('tr-fac-mixta-wrap').style.display=val==='Mixta'?'flex':'none';
   document.getElementById('tr-medio').value=t?.medio||'Efectivo';
   document.getElementById('tr-estado-pago').value=t?.estadoPago||'Pagado';
   document.getElementById('tr-fecha-pago').value=t?.fechaPago||'';
@@ -2958,13 +3004,19 @@ document.getElementById('tr-estado-pago').addEventListener('change',function(){
   if(wrap) wrap.style.display=(this.value==='Pendiente'||this.value==='Programado')?'flex':'none';
 });
 
-document.getElementById('tr-fac').addEventListener('change', function(){
-  const wrap = document.getElementById('tr-fac-entregada-wrap');
-  const driveBtn = document.getElementById('tr-drive-btn');
-  const esFac = this.value === 'Si';
-  if(wrap) wrap.style.display = esFac ? 'flex' : 'none';
-  if(driveBtn) driveBtn.style.display = esFac ? '' : 'none';
-});
+function onTrFacChange(){
+  const val=document.getElementById('tr-fac').value;
+  const wrap=document.getElementById('tr-fac-entregada-wrap');
+  const driveBtn=document.getElementById('tr-drive-btn');
+  const mixtaWrap=document.getElementById('tr-fac-mixta-wrap');
+  const esFac=val==='Si'||val==='Mixta';
+  if(wrap) wrap.style.display=esFac?'flex':'none';
+  if(driveBtn) driveBtn.style.display=esFac?'':'none';
+  if(mixtaWrap) mixtaWrap.style.display=val==='Mixta'?'flex':'none';
+}
+window.onTrFacChange=onTrFacChange;
+
+document.getElementById('tr-fac').addEventListener('change', onTrFacChange);
 
 // ── ACTUALIZAR loadAll para incluir proveedores, órdenes y caja ──
 async function loadAll(){
