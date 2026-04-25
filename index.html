@@ -854,6 +854,7 @@ tr.group-hd:hover{background:var(--bg3)!important}
             <th class="sortable" onclick="setSortT('fecha')" style="white-space:nowrap;width:90px">Fecha</th>
             <th class="sortable" onclick="setSortT('tipo')">Tipo</th>
             <th>Descripción</th>
+            <th>Proveedor</th>
             <th>Área</th>
             <th>Fac.</th>
             <th>Estado</th>
@@ -2903,14 +2904,15 @@ function renderTransacciones(){
   const balEl=document.getElementById('trans-bal');
   balEl.textContent=f(Math.abs(balance)); balEl.style.color=balance>=0?'var(--green)':'var(--red)';
   const tb=document.getElementById('tb-trans');
-  if(!rows.length){tb.innerHTML='<tr class="empty"><td colspan="8">Sin transacciones</td></tr>';return;}
+  if(!rows.length){tb.innerHTML='<tr class="empty"><td colspan="9">Sin transacciones</td></tr>';return;}
   tb.innerHTML=rows.map(t=>{
     const tipo=S.tipos.find(z=>z.id===t.tipoId), esIng=t.clase==='Ingreso';
     const estadoBadge=t.estadoPago==='Pendiente'?'<span class="badge b-egreso">Pendiente</span>':t.estadoPago==='Programado'?'<span class="badge bb">Programado</span>':'<span class="badge bactivo">Pagado</span>';
     return`<tr class="trans-row-${esIng?'ingreso':'egreso'}" onclick="openMoTransaccion('${t.id}')">
       <td class="mo" style="font-size:11px;white-space:nowrap;width:90px">${t.fecha?t.fecha.split('-').reverse().join('/'):' —'}</td>
       <td><span class="badge ${esIng?'b-ingreso':'b-egreso'}">${esIng?'▲':'▼'} ${x(tipo?.nombre||t.tipoNombre||'—')}</span></td>
-      <td style="color:var(--txt2);max-width:180px;overflow:hidden;text-overflow:ellipsis">${x(t.proveedorNombre||t.descripcion||'—')}</td>
+      <td style="color:var(--txt2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${x(t.descripcion||'—')}</td>
+      <td style="font-size:12px;color:var(--txt3);white-space:nowrap">${x(t.proveedorNombre||'—')}</td>
       <td><span class="badge bd">${x(t.area||'—')}</span></td>
       <td>${t.factura==='Si'
         ? `<span class="badge b-fac">FAC</span> ${t.facturaEntregada==='Si'
