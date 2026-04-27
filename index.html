@@ -1011,19 +1011,19 @@ tr.group-hd:hover{background:var(--bg3)!important}
 
         <!-- Sub-tabs -->
         <div class="ck-tabs">
-          <button class="ck-tab active" data-ck="primera" onclick="switchCK('primera')">Primera</button>
+          <button class="ck-tab" data-ck="primera" onclick="switchCK('primera')">Primera</button>
           <button class="ck-tab" data-ck="juveniles" onclick="switchCK('juveniles')">Juv. 4–6</button>
           <button class="ck-tab" data-ck="juveniles2" onclick="switchCK('juveniles2')">Juv. 7–9</button>
           <button class="ck-tab" data-ck="inf2013" onclick="switchCK('inf2013')">Inf. 2013</button>
           <button class="ck-tab" data-ck="inf2014" onclick="switchCK('inf2014')">Inf. 2014</button>
           <button class="ck-tab" data-ck="inf2015" onclick="switchCK('inf2015')">Inf. 2015</button>
           <button class="ck-tab" data-ck="inf2016" onclick="switchCK('inf2016')">Inf. 2016</button>
-          <button class="ck-tab" data-ck="todos" onclick="switchCK('todos')">Todos</button>
+          <button class="ck-tab active" data-ck="todos" onclick="switchCK('todos')">Todos</button>
           <button class="ck-tab" data-ck="items" onclick="switchCK('items')">⚙ Items</button>
         </div>
 
         <!-- Panel partidos (reutilizado para cada tab) -->
-        <div class="ck-panel active" id="ck-primera">
+        <div class="ck-panel" id="ck-primera">
           <div class="partido-grid" id="pg-primera"></div>
           <div id="pg-primera-empty" style="display:none;color:var(--txt3);font-size:13px;padding:20px 0">Sin partidos cargados.</div>
         </div>
@@ -1051,7 +1051,7 @@ tr.group-hd:hover{background:var(--bg3)!important}
           <div class="partido-grid" id="pg-inf2016"></div>
           <div id="pg-inf2016-empty" style="display:none;color:var(--txt3);font-size:13px;padding:20px 0">Sin partidos cargados.</div>
         </div>
-        <div class="ck-panel" id="ck-todos">
+        <div class="ck-panel active" id="ck-todos">
           <div class="partido-grid" id="pg-todos"></div>
           <div id="pg-todos-empty" style="display:none;color:var(--txt3);font-size:13px;padding:20px 0">Sin partidos cargados.</div>
         </div>
@@ -4087,7 +4087,7 @@ async function fsGetChecks(partidoId){ try{ const s=await getDoc(doc(db,'partido
 async function fsSaveChecks(partidoId,checks){ await setDoc(doc(db,'partido_checks',partidoId),{checks}); }
 
 // ── Navegación ──
-let _ckTab='primera';
+let _ckTab='todos';
 function switchCK(tab){
   _ckTab=tab;
   document.querySelectorAll('.ck-tab').forEach(b=>b.classList.toggle('active',b.dataset.ck===tab));
@@ -4102,7 +4102,6 @@ async function renderPartidos(){
   if(!S.partidos) { try{ S.partidos=await fsGetPartidos(); }catch(e){ S.partidos=[]; } }
   if(!S.ckItems)  { try{ S.ckItems=await fsGetCkItems();   }catch(e){ S.ckItems=[];  } }
 
-  // Definir qué categorías muestra cada tab
   const tabCats={
     primera:   ['Primera División'],
     juveniles: ['4ta División','5ta División','6ta División'],
@@ -4111,29 +4110,39 @@ async function renderPartidos(){
     inf2014:   ['Infantiles 2014'],
     inf2015:   ['Infantiles 2015'],
     inf2016:   ['Infantiles 2016'],
-    todos: null
+    todos:     null
   };
-  const allTabs=['primera','juveniles','juveniles2','inf2013','inf2014','inf2015','inf2016'];
-  const tabs = _ckTab==='todos' ? allTabs : [_ckTab];
 
+  if(_ckTab==='todos'){
+    // Renderizar todos los partidos en pg-todos, ordenados por fecha
+    const grid=document.getElementById('pg-todos');
+    const empty=document.getElementById('pg-todos-empty');
+    if(!grid) return;
+    const sorted=[...S.partidos].sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+    if(!sorted.length){ grid.innerHTML=''; if(empty) empty.style.display=''; return; }
+    if(empty) empty.style.display='none';
+    const cardsHtml=await Promise.all(sorted.map(p=>buildPartidoCard(p)));
+    grid.innerHTML=cardsHtml.join('');
+    return;
+  }
+
+  // Tab específico
   const renderTab = async (tab) => {
     const grid=document.getElementById('pg-'+tab);
     const empty=document.getElementById('pg-'+tab+'-empty');
     if(!grid) return;
     const cats=tabCats[tab];
-    const filtered=S.partidos.filter(p=>{
+    const filtered=[...S.partidos].filter(p=>{
       if(!cats) return true;
       return (p.categorias||[]).some(c=>cats.includes(c));
-    }).sort((a,b)=>a.fecha.localeCompare(b.fecha)); // más próximos primero
-
+    }).sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
     if(!filtered.length){ grid.innerHTML=''; if(empty) empty.style.display=''; return; }
     if(empty) empty.style.display='none';
-
-    const cardsHtml = await Promise.all(filtered.map(p=>buildPartidoCard(p)));
-    grid.innerHTML = cardsHtml.join('');
+    const cardsHtml=await Promise.all(filtered.map(p=>buildPartidoCard(p)));
+    grid.innerHTML=cardsHtml.join('');
   };
 
-  for(const t of tabs) await renderTab(t);
+  await renderTab(_ckTab);
 }
 window.renderPartidos=renderPartidos;
 
