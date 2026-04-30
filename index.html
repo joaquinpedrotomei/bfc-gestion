@@ -2800,41 +2800,90 @@ function openMoOrden(id){
   document.getElementById('ord-fecha').value=o?.fecha||new Date().toISOString().slice(0,10);
   document.getElementById('ord-estado').value=o?.estado||'Pendiente';
   document.getElementById('ord-obs').value=o?.observaciones||'';
-  _ordItems=o?JSON.parse(JSON.stringify(o.items||[])):[{proveedorId:'',proveedorNombre:'',descripcion:'',cbu:'',alias:'',medio:'Transferencia',monto:0}];
+  _ordItems.length=0;
+  const newItems=o?JSON.parse(JSON.stringify(o.items||[])):[{proveedorId:'',proveedorNombre:'',descripcion:'',cbu:'',alias:'',medio:'Transferencia',monto:0}];
+  newItems.forEach(item=>_ordItems.push(item));
   renderOrdItems();
   document.getElementById('mo-orden').classList.add('open');
 }
 window.openMoOrden = openMoOrden;
-window.closeMoOrden = ()=>{ document.getElementById('mo-orden').classList.remove('open'); _ordItems=[]; };
+window.closeMoOrden = ()=>{ document.getElementById('mo-orden').classList.remove('open'); _ordItems.length=0; };
 
 function renderOrdItems(){
   const cont=document.getElementById('ord-items');
   cont.innerHTML='';
   _ordItems.forEach((item,i)=>{
     const row=document.createElement('div');
+    row.className='ord-item-row';
     row.style.cssText='display:grid;grid-template-columns:2fr 1.5fr 1fr 1fr 32px;border-bottom:1px solid var(--border);align-items:center';
-    row.innerHTML=`
-      <div style="padding:6px 8px;display:flex;flex-direction:column;gap:4px">
-        <select style="width:100%;padding:5px 8px;border:1.5px solid var(--border2);border-radius:5px;font-size:12px;outline:none" onchange="onOrdProvChange(${i},this)">
-          <option value="">— Seleccionar proveedor —</option>
-          <option value="__manual__">✏ Ingreso manual</option>
-          ${(S.proveedores||[]).map(p=>`<option value="${p.id}" ${item.proveedorId===p.id?'selected':''}>${x(p.nombre)}</option>`).join('')}
-        </select>
-        <input type="text" placeholder="Descripción / concepto" value="${x(item.descripcion||'')}" style="width:100%;padding:5px 8px;border:1.5px solid var(--border2);border-radius:5px;font-size:12px;outline:none" oninput="_ordItems[${i}].descripcion=this.value">
-      </div>
-      <div style="padding:6px 8px;display:flex;flex-direction:column;gap:4px">
-        <input type="text" placeholder="CBU" value="${x(item.cbu||'')}" style="width:100%;padding:5px 8px;border:1.5px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:11px;outline:none" oninput="_ordItems[${i}].cbu=this.value">
-        <input type="text" placeholder="Alias" value="${x(item.alias||'')}" style="width:100%;padding:5px 8px;border:1.5px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:11px;outline:none" oninput="_ordItems[${i}].alias=this.value">
-      </div>
-      <select style="margin:0 6px;padding:5px 8px;border:1.5px solid var(--border2);border-radius:5px;font-size:12px;outline:none" onchange="_ordItems[${i}].medio=this.value">
-        <option ${item.medio==='Transferencia'?'selected':''}>Transferencia</option>
-        <option ${item.medio==='Efectivo'?'selected':''}>Efectivo</option>
-        <option ${item.medio==='Cheque'?'selected':''}>Cheque</option>
-        <option ${item.medio==='Mercado Pago'?'selected':''}>Mercado Pago</option>
-      </select>
-      <input type="number" min="0" value="${item.monto||''}" placeholder="0" style="margin:0 6px;padding:5px 8px;border:1.5px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:12px;outline:none;width:calc(100% - 12px)" oninput="_ordItems[${i}].monto=parseFloat(this.value)||0;calcOrdTotal()"
-        onchange="_ordItems[${i}].monto=parseFloat(this.value)||0;calcOrdTotal()">
-      <button style="margin:0 4px;padding:4px 8px;border:none;background:transparent;color:var(--red);cursor:pointer;font-size:16px" onclick="removeOrdItem(${i})">×</button>`;
+
+    // Proveedor select
+    const provSel=document.createElement('select');
+    provSel.style.cssText='width:100%;padding:5px 8px;border:1.5px solid var(--border2);border-radius:5px;font-size:12px;outline:none';
+    provSel.innerHTML=`<option value="">— Seleccionar proveedor —</option><option value="__manual__">✏ Ingreso manual</option>`
+      +(S.proveedores||[]).map(p=>`<option value="${p.id}" ${item.proveedorId===p.id?'selected':''}>${x(p.nombre)}</option>`).join('');
+    provSel.addEventListener('change',function(){
+      const val=this.value;
+      if(val==='__manual__'){ _ordItems[i].proveedorId=''; _ordItems[i].proveedorNombre=''; return; }
+      const prov=S.proveedores?.find(p=>p.id===val);
+      if(prov){
+        _ordItems[i].proveedorId=prov.id; _ordItems[i].proveedorNombre=prov.nombre;
+        _ordItems[i].cbu=prov.cbu||''; _ordItems[i].alias=prov.alias||'';
+        cbuInp.value=prov.cbu||''; aliasInp.value=prov.alias||'';
+      }
+    });
+
+    const descInp=document.createElement('input');
+    descInp.type='text'; descInp.placeholder='Descripción / concepto'; descInp.value=item.descripcion||'';
+    descInp.style.cssText='width:100%;padding:5px 8px;border:1.5px solid var(--border2);border-radius:5px;font-size:12px;outline:none';
+    descInp.addEventListener('input',function(){ _ordItems[i].descripcion=this.value; });
+
+    const provCol=document.createElement('div');
+    provCol.style.cssText='padding:6px 8px;display:flex;flex-direction:column;gap:4px';
+    provCol.appendChild(provSel); provCol.appendChild(descInp);
+
+    const cbuInp=document.createElement('input');
+    cbuInp.type='text'; cbuInp.placeholder='CBU'; cbuInp.value=item.cbu||'';
+    cbuInp.style.cssText='width:100%;padding:5px 8px;border:1.5px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:11px;outline:none';
+    cbuInp.addEventListener('input',function(){ _ordItems[i].cbu=this.value; });
+
+    const aliasInp=document.createElement('input');
+    aliasInp.type='text'; aliasInp.placeholder='Alias'; aliasInp.value=item.alias||'';
+    aliasInp.style.cssText='width:100%;padding:5px 8px;border:1.5px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:11px;outline:none';
+    aliasInp.addEventListener('input',function(){ _ordItems[i].alias=this.value; });
+
+    const cbuCol=document.createElement('div');
+    cbuCol.style.cssText='padding:6px 8px;display:flex;flex-direction:column;gap:4px';
+    cbuCol.appendChild(cbuInp); cbuCol.appendChild(aliasInp);
+
+    const medioSel=document.createElement('select');
+    medioSel.style.cssText='margin:0 6px;padding:5px 8px;border:1.5px solid var(--border2);border-radius:5px;font-size:12px;outline:none';
+    ['Transferencia','Efectivo','Cheque','Mercado Pago'].forEach(m=>{
+      const opt=document.createElement('option'); opt.value=m; opt.textContent=m;
+      if(item.medio===m) opt.selected=true;
+      medioSel.appendChild(opt);
+    });
+    medioSel.addEventListener('change',function(){ _ordItems[i].medio=this.value; });
+
+    const montoInp=document.createElement('input');
+    montoInp.type='number'; montoInp.min='0'; montoInp.placeholder='0';
+    if(item.monto) montoInp.value=item.monto;
+    montoInp.style.cssText='margin:0 6px;padding:5px 8px;border:1.5px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:12px;outline:none;width:calc(100% - 12px)';
+    montoInp.addEventListener('input',function(){
+      _ordItems[i].monto=parseFloat(this.value)||0;
+      calcOrdTotal();
+    });
+
+    const delBtn=document.createElement('button');
+    delBtn.textContent='×'; delBtn.type='button';
+    delBtn.style.cssText='margin:0 4px;padding:4px 8px;border:none;background:transparent;color:var(--red);cursor:pointer;font-size:16px';
+    delBtn.addEventListener('click',function(){ removeOrdItem(i); });
+
+    row.appendChild(provCol);
+    row.appendChild(cbuCol);
+    row.appendChild(medioSel);
+    row.appendChild(montoInp);
+    row.appendChild(delBtn);
     cont.appendChild(row);
   });
   calcOrdTotal();
@@ -2869,10 +2918,6 @@ function onOrdProvChange(i, sel){
 window.onOrdProvChange = onOrdProvChange;
 
 function calcOrdTotal(){
-  // Primero sincronizar montos del DOM al array por si hay discrepancia
-  document.querySelectorAll('#ord-items input[type="number"]').forEach((inp,i)=>{
-    if(_ordItems[i]) _ordItems[i].monto=parseFloat(inp.value)||0;
-  });
   const t=_ordItems.reduce((s,item)=>s+(item.monto||0),0);
   st('ord-total',f(t));
 }
