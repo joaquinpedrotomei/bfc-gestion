@@ -966,7 +966,7 @@ tr.group-hd:hover{background:var(--bg3)!important}
         </div>
         <div class="tw"><table>
           <thead><tr>
-            <th>Fecha Pago</th><th>Proveedor</th><th>Concepto</th><th>Medio</th><th>Monto</th><th>Estado</th><th>Acciones</th>
+            <th style="width:48px">N°</th><th>Fecha Pago</th><th>Proveedor</th><th>Concepto</th><th>Medio</th><th>Monto</th><th>Estado</th><th>Acciones</th>
           </tr></thead>
           <tbody id="tb-ordenes"></tbody>
         </table></div>
@@ -2767,12 +2767,13 @@ function renderOrdenes(){
   const nPend=rows.filter(o=>o.estado==='Pendiente').length;
   st('ord-pendiente',f(pendTotal)); st('ord-pagado',f(pagTotal)); st('ord-n-pendiente',nPend);
   const tb=document.getElementById('tb-ordenes');
-  if(!rows.length){tb.innerHTML='<tr class="empty"><td colspan="7">Sin órdenes de pago</td></tr>';return;}
+  if(!rows.length){tb.innerHTML='<tr class="empty"><td colspan="8">Sin órdenes de pago</td></tr>';return;}
   tb.innerHTML=rows.map(o=>{
     const esPend=o.estado==='Pendiente', vencida=esPend&&(o.fecha||'')< new Date().toISOString().slice(0,10);
     const items=o.items||[];
     const provNames=items.map(i=>i.proveedorNombre||i.descripcion||'—').slice(0,2).join(', ')+(items.length>2?'…':'');
     return`<tr onclick="openMoOrden('${o.id}')" style="${vencida?'background:var(--red-lt)':''}">
+      <td style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--red);white-space:nowrap">#${o.nro||'—'}</td>
       <td class="mo" style="font-size:12px;color:${vencida?'var(--red)':'var(--txt2)'}">${o.fecha||'—'} ${vencida?'⚠':''}</td>
       <td style="font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis">${x(provNames)}</td>
       <td style="font-size:12px;color:var(--txt2)">${x(o.observaciones||'—')}</td>
@@ -2934,9 +2935,13 @@ async function saveOrden(){
   if(!fecha){toast('Fecha requerida',true);return;}
   if(!_ordItems.length){toast('Agregá al menos un ítem',true);return;}
   const total=_ordItems.reduce((s,i)=>s+(i.monto||0),0);
-  const orden={id:document.getElementById('ord-id').value||autoId(),fecha,estado:document.getElementById('ord-estado').value,observaciones:document.getElementById('ord-obs').value,items:_ordItems,total,creadoEn:new Date().toISOString()};
+  const existingId=document.getElementById('ord-id').value;
+  const existente=existingId?(S.ordenes||[]).find(o=>o.id===existingId):null;
+  // Número correlativo: si es nueva, tomar el máximo actual + 1
+  const nro=existente?.nro || (Math.max(0,...(S.ordenes||[]).map(o=>o.nro||0)) + 1);
+  const orden={id:existingId||autoId(),nro,fecha,estado:document.getElementById('ord-estado').value,observaciones:document.getElementById('ord-obs').value,items:_ordItems,total,creadoEn:new Date().toISOString()};
   load(true);
-  try { await fsSaveOrden(orden); S.ordenes=await fsGetOrdenes(); renderOrdenes(); window.closeMoOrden(); toast('Orden guardada'); renderDashboard(); }
+  try { await fsSaveOrden(orden); S.ordenes=await fsGetOrdenes(); renderOrdenes(); window.closeMoOrden(); toast(`Orden #${nro} guardada`); renderDashboard(); }
   catch(e){toast('Error: '+e.message,true);}
   load(false);
 }
@@ -3766,9 +3771,10 @@ const BFC_CSS = `
 function pdfHeader(titulo, subtitulo=''){
   return `<h1>${titulo}</h1><div class="sub">Barrancas Fútbol Club${subtitulo?' — '+subtitulo:''}</div><div class="meta"><div class="meta-item">Fecha<strong>${new Date().toLocaleDateString('es-AR')}</strong></div><div class="meta-item">Hora<strong>${new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}</strong></div></div>`;
 }
-function pdfOpen(html){
+function pdfOpen(html, filename){
+  const title=filename||'BFC Gestión';
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BFC Gestión</title><style>${BFC_CSS}</style></head><body>${html}<div class="footer"><span>BFC Gestión — Barrancas Fútbol Club</span><span>Documento generado el ${new Date().toLocaleDateString('es-AR')}</span></div><script>window.onload=()=>{window.print();}<\/script></body></html>`);
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>${BFC_CSS}</style></head><body>${html}<div class="footer"><span>BFC Gestión — Barrancas Fútbol Club</span><span>Documento generado el ${new Date().toLocaleDateString('es-AR')}</span></div><script>window.onload=()=>{document.title='${title}';window.print();}<\/script></body></html>`);
   w.document.close();
 }
 
@@ -3978,6 +3984,7 @@ window.exportPDFGastosFuturos = exportPDFGastosFuturos;
 function buildOrdenHTML(orden){
   const items=orden.items||[];
   const total=orden.total||0;
+  const nro=orden.nro||'';
   const rows=items.map(i=>`<tr>
     <td class="nm">${x(i.proveedorNombre||i.descripcion||'—')}</td>
     <td class="mono">${x(i.cbu||'—')}</td>
@@ -3985,11 +3992,12 @@ function buildOrdenHTML(orden){
     <td>${x(i.medio||'—')}</td>
     <td class="r"><strong>${f(i.monto||0)}</strong></td>
   </tr>`).join('');
-  return `${pdfHeader('Orden de Pago','Fecha: '+orden.fecha)}
+  return `${pdfHeader(`Orden de Pago${nro?' #'+nro:''}`, 'Fecha: '+orden.fecha)}
     <div class="stats-row">
       <div class="stat-box ${orden.estado==='Pagado'?'green':'amber'}"><div class="stat-lbl">Estado</div><div class="stat-val" style="font-size:14px">${orden.estado}</div></div>
       <div class="stat-box red"><div class="stat-lbl">Total a pagar</div><div class="stat-val">${f(total)}</div></div>
       <div class="stat-box"><div class="stat-lbl">Ítems</div><div class="stat-val">${items.length}</div></div>
+      ${nro?`<div class="stat-box"><div class="stat-lbl">N° Orden</div><div class="stat-val" style="color:#C8102E">#${nro}</div></div>`:''}
     </div>
     ${orden.observaciones?`<p style="margin-bottom:14px;font-size:12px;color:#4a5060;background:#f4f5f7;padding:10px 14px;border-radius:6px;border-left:3px solid #C8102E">${x(orden.observaciones)}</p>`:''}
     <table><thead><tr><th>Proveedor / Concepto</th><th>CBU</th><th>Alias</th><th>Medio</th><th class="r">Monto</th></tr></thead>
@@ -4000,7 +4008,11 @@ function buildOrdenHTML(orden){
 
 function exportPDFOrden(id){
   const orden=S.ordenes?.find(o=>o.id===id); if(!orden) return;
-  pdfOpen(buildOrdenHTML(orden));
+  // Nombre del archivo: BFC_OP3_30-04-2026
+  const fechaStr=(orden.fecha||'').split('-').reverse().join('-'); // YYYY-MM-DD -> DD-MM-YYYY
+  const nro=orden.nro||'';
+  const filename=`BFC_OP${nro}_${fechaStr}`;
+  pdfOpen(buildOrdenHTML(orden), filename);
 }
 window.exportPDFOrden = exportPDFOrden;
 
