@@ -2832,7 +2832,8 @@ function renderOrdItems(){
         <option ${item.medio==='Cheque'?'selected':''}>Cheque</option>
         <option ${item.medio==='Mercado Pago'?'selected':''}>Mercado Pago</option>
       </select>
-      <input type="number" min="0" value="${item.monto||0}" style="margin:0 6px;padding:5px 8px;border:1.5px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:12px;outline:none;width:calc(100% - 12px)" oninput="_ordItems[${i}].monto=parseFloat(this.value)||0;calcOrdTotal()">
+      <input type="number" min="0" value="${item.monto||''}" placeholder="0" style="margin:0 6px;padding:5px 8px;border:1.5px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:12px;outline:none;width:calc(100% - 12px)" oninput="_ordItems[${i}].monto=parseFloat(this.value)||0;calcOrdTotal()"
+        onchange="_ordItems[${i}].monto=parseFloat(this.value)||0;calcOrdTotal()">
       <button style="margin:0 4px;padding:4px 8px;border:none;background:transparent;color:var(--red);cursor:pointer;font-size:16px" onclick="removeOrdItem(${i})">×</button>`;
     cont.appendChild(row);
   });
@@ -2841,13 +2842,40 @@ function renderOrdItems(){
 
 function onOrdProvChange(i, sel){
   const val=sel.value;
-  if(val==='__manual__'){_ordItems[i].proveedorId='';_ordItems[i].proveedorNombre=''; return;}
+  if(val==='__manual__'){
+    _ordItems[i].proveedorId='';
+    _ordItems[i].proveedorNombre='';
+    return;
+  }
   const prov=S.proveedores?.find(p=>p.id===val);
-  if(prov){ _ordItems[i].proveedorId=prov.id; _ordItems[i].proveedorNombre=prov.nombre; _ordItems[i].cbu=prov.cbu||''; _ordItems[i].alias=prov.alias||''; renderOrdItems(); }
+  if(prov){
+    _ordItems[i].proveedorId=prov.id;
+    _ordItems[i].proveedorNombre=prov.nombre;
+    _ordItems[i].cbu=prov.cbu||'';
+    _ordItems[i].alias=prov.alias||'';
+    // Actualizar solo los inputs de CBU y alias sin re-renderizar todo
+    const row=sel.closest('div[style*="grid"]');
+    if(row){
+      const inputs=row.querySelectorAll('input[type="text"]');
+      // inputs: [descripcion, cbu, alias] — los de CBU y alias son los 2do y 3ro
+      const cbuInputs=row.querySelectorAll('input[placeholder="CBU"], input[placeholder="Alias"]');
+      cbuInputs.forEach(inp=>{
+        if(inp.placeholder==='CBU') inp.value=prov.cbu||'';
+        if(inp.placeholder==='Alias') inp.value=prov.alias||'';
+      });
+    }
+  }
 }
 window.onOrdProvChange = onOrdProvChange;
 
-function calcOrdTotal(){ const t=_ordItems.reduce((s,i)=>s+(i.monto||0),0); st('ord-total',f(t)); }
+function calcOrdTotal(){
+  // Primero sincronizar montos del DOM al array por si hay discrepancia
+  document.querySelectorAll('#ord-items input[type="number"]').forEach((inp,i)=>{
+    if(_ordItems[i]) _ordItems[i].monto=parseFloat(inp.value)||0;
+  });
+  const t=_ordItems.reduce((s,item)=>s+(item.monto||0),0);
+  st('ord-total',f(t));
+}
 window.calcOrdTotal = calcOrdTotal;
 
 function addOrdItem(){ _ordItems.push({proveedorId:'',proveedorNombre:'',descripcion:'',cbu:'',alias:'',medio:'Transferencia',monto:0}); renderOrdItems(); }
