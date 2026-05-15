@@ -547,7 +547,11 @@ tr.group-hd:hover{background:var(--bg3)!important}
 
       <!-- PAGOS CH -->
       <div class="ch-panel" id="ch-pagos">
-        <div class="ph"><div><h2>Pagos</h2><p>Órdenes de pago y registro histórico</p></div><div class="ph-actions"><button class="btn btn-primary" onclick="showNuevoPago(null)">+ Nuevo Pago</button></div></div>
+        <div class="ph"><div><h2>Pagos</h2><p>Órdenes de pago y registro histórico</p></div><div class="ph-actions">
+          <button class="btn btn-ghost btn-sm" onclick="exportXLSTodosPagos()">⬇ XLS Todos</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportPDFTodosPagos()">⬇ PDF Todos</button>
+          <button class="btn btn-primary" onclick="showNuevoPago(null)">+ Nuevo Pago</button>
+        </div></div>
         <div id="pag-hist"><p style="font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--txt3);margin-bottom:10px">Historial</p><div id="lp-list"></div></div>
         <div id="pag-form" style="display:none">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
@@ -705,7 +709,9 @@ tr.group-hd:hover{background:var(--bg3)!important}
           </div>
           <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">
             <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt3)"><span style="width:18px;height:18px;background:var(--green-lt);border:2px solid var(--green);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:var(--green)">✓</span>Entregada</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt3)"><span style="width:18px;height:18px;background:var(--bg3);border:2px solid var(--border2);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:var(--txt3)">✗</span>No corresponde</div>
             <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt3)"><span style="width:18px;height:18px;background:#fff;border:2px solid var(--border2);border-radius:4px;display:inline-block"></span>Pendiente</div>
+            <div style="font-size:11px;color:var(--txt3);margin-left:4px">Click cicla entre los estados</div>
           </div>
         </div>
       </div>
@@ -841,7 +847,11 @@ tr.group-hd:hover{background:var(--bg3)!important}
 
       <!-- TRANSACCIONES -->
       <div class="cont-panel active" id="cont-transacciones">
-        <div class="ph"><div><h2>Transacciones</h2><p>Ingresos y egresos del club</p></div><div class="ph-actions"><button class="btn btn-primary" onclick="openMoTransaccion()">+ Nueva</button></div></div>
+        <div class="ph"><div><h2>Transacciones</h2><p>Ingresos y egresos del club</p></div><div class="ph-actions">
+          <button class="btn btn-ghost btn-sm" onclick="exportXLSTransacciones()">⬇ XLS</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportPDFTransacciones()">⬇ PDF</button>
+          <button class="btn btn-primary" onclick="openMoTransaccion()">+ Nueva</button>
+        </div></div>
         <div class="filters">
           <input class="fi fi-search" id="ft-search" placeholder="Buscar…" oninput="renderTransacciones()">
           <select class="fi" id="ft-tipo" onchange="renderTransacciones()"><option value="">Todos los tipos</option></select>
@@ -1864,17 +1874,22 @@ function renderPersonaRow(p,isSub){
   const roles=Array.isArray(p.roles)?p.roles:(p.rol?[p.rol]:[]);
   const cats=Array.isArray(p.categorias)?p.categorias:(p.categoria?[p.categoria]:[]);
   const esJugador=roles.includes('Jugador');
+  const mostrarJug=_personalSub!=='staff';
   const eb=p.escalafon?`<span class="badge ba">${p.escalafon}</span>`:'—';
   const fac=p.factura==='Si'?`<span class="badge b-fac">FAC</span>`:`<span style="color:var(--txt3);font-size:12px">—</span>`;
-  const posCell=`<td class="col-jugador" style="font-size:12px;color:var(--txt2)">${x(p.posicion||'—')}</td>`;
-  const escCell=`<td class="col-jugador">${esJugador?eb:'—'}</td>`;
-  const bonCell=`<td class="col-jugador mo">${esJugador?f(p.bono):'—'}</td>`;
+  const jugCells=mostrarJug
+    ?`<td class="col-jugador" style="font-size:12px;color:var(--txt2)">${x(p.posicion||'—')}</td>
+       <td class="col-jugador">${esJugador?eb:'—'}</td>`
+    :'';
+  const bonCell=mostrarJug?`<td class="col-jugador mo">${esJugador?f(p.bono):'—'}</td>`:'';
+  const total=(p.basico||0)+(esJugador?p.bono||0:0);
+
   if(isSub) return `<tr onclick="openFicha('${p.id}')" style="background:var(--bg2)">
     <td style="padding-left:28px;border-left:3px solid var(--border2);color:var(--txt2);font-size:12px">└ ${roles.map(r=>x(r)).join(', ')||'—'}</td>
     <td></td><td style="font-size:12px;color:var(--txt2)">${cats.map(c=>x(c)).join(', ')||'—'}</td>
-    ${posCell}${escCell}${fac?`<td>${fac}</td>`:'<td>—</td>'}
+    ${jugCells}<td>${fac}</td>
     <td class="mo">${f(p.basico)}</td>${bonCell}
-    <td class="mo-total">${f((p.basico||0)+(esJugador?p.bono||0:0))}</td>
+    <td class="mo-total">${f(total)}</td>
     <td><span class="badge bactivo" style="font-size:10px">${p.estado}</span></td>
     <td style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openMoPersona('${p.id}')">Editar</button><button class="btn btn-success btn-sm" onclick="event.stopPropagation();nuevaFuncion('${p.id}')">+ Rol</button></td>
   </tr>`;
@@ -1882,9 +1897,9 @@ function renderPersonaRow(p,isSub){
     <td class="nm">${x(p.nombre)}</td>
     <td style="font-size:12px;color:var(--txt2)">${roles.map(r=>x(r)).join(', ')||'—'}</td>
     <td style="font-size:12px;color:var(--txt2)">${cats.map(c=>x(c)).join(', ')||'—'}</td>
-    ${posCell}${escCell}<td>${fac}</td>
+    ${jugCells}<td>${fac}</td>
     <td class="mo">${f(p.basico)}</td>${bonCell}
-    <td class="mo-total">${f((p.basico||0)+(esJugador?p.bono||0:0))}</td>
+    <td class="mo-total">${f(total)}</td>
     <td><span class="badge b${p.estado==='Activo'?'activo':'baja'}">${p.estado}</span></td>
     <td style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openMoPersona('${p.id}')">Editar</button><button class="btn btn-success btn-sm" onclick="event.stopPropagation();nuevaFuncion('${p.id}')">+ Rol</button></td>
   </tr>`;
@@ -2754,7 +2769,7 @@ async function eliminarProveedor(id){ if(!confirm('¿Eliminar este proveedor?'))
 window.eliminarProveedor = eliminarProveedor;
 
 // ── ÓRDENES DE PAGO ──
-async function fsGetOrdenes(){ const s=await getDocs(collection(db,'ordenes')); return s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')); }
+async function fsGetOrdenes(){ const s=await getDocs(collection(db,'ordenes')); return s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.nro||0)-(a.nro||0)); }
 async function fsSaveOrden(o){ const id=o.id||autoId(); await setDoc(doc(db,'ordenes',id),{...o,id}); return id; }
 async function fsDeleteOrden(id){ await deleteDoc(doc(db,'ordenes',id)); }
 
@@ -3546,26 +3561,43 @@ async function renderTrackerFacturas() {
   tb.innerHTML = conFac.map(p => {
     const roles = Array.isArray(p.roles) ? p.roles : (p.rol ? [p.rol] : []);
     const state = trackerMap[p.id]?.meses || {};
-    const totalEntregadas = Object.values(state).filter(Boolean).length;
+    // Estado por mes: undefined/null = pendiente, true = entregada, 'nc' = no corresponde
+    const totalEntregadas = Object.values(state).filter(v=>v===true).length;
+    const totalNC = Object.values(state).filter(v=>v==='nc').length;
+    const mesesActivos = mesActual - totalNC; // meses que sí corresponden
 
     const mesesCells = Array.from({length:12},(_,i)=>{
       const mes = i + 1;
-      const entregada = !!state[mes];
+      const val = state[mes]; // true | 'nc' | undefined
       const esFuturo = anio === new Date().getFullYear() && mes > mesActual;
+      let bg, border, content, title;
+      if(val === true){
+        bg='var(--green-lt)'; border='var(--green)';
+        content='<span style="color:var(--green);font-size:14px">✓</span>';
+        title='Entregada — click para No corresponde';
+      } else if(val === 'nc'){
+        bg='var(--bg3)'; border='var(--border2)';
+        content='<span style="color:var(--txt3);font-size:12px">✗</span>';
+        title='No corresponde — click para limpiar';
+      } else {
+        bg=esFuturo?'var(--bg3)':'#fff'; border='var(--border2)';
+        content='';
+        title=esFuturo?'Mes futuro':'Marcar como entregada';
+      }
       return `<td style="padding:6px 8px;text-align:center;border-left:1px solid var(--border)">
         <button onclick="toggleFacMes('${p.id}','${p.nombre.replace(/'/g,"\\'")}',${anio},${mes})"
-          style="width:26px;height:26px;border-radius:5px;border:2px solid ${entregada?'var(--green)':'var(--border2)'};background:${entregada?'var(--green-lt)':esFuturo?'var(--bg3)':'#fff'};cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all .15s;opacity:${esFuturo?.5:1}"
-          title="${entregada?'Entregada — click para desmarcar':'Marcar como entregada'}">${entregada?'<span style="color:var(--green)">✓</span>':''}</button>
+          style="width:26px;height:26px;border-radius:5px;border:2px solid ${border};background:${bg};cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all .15s;opacity:${esFuturo&&!val?.5:1}"
+          title="${title}">${content}</button>
       </td>`;
     }).join('');
 
-    const pctColor = totalEntregadas === mesActual ? 'var(--green)' : totalEntregadas < mesActual ? 'var(--red)' : 'var(--txt3)';
+    const pctColor = totalEntregadas >= mesesActivos && mesesActivos>0 ? 'var(--green)' : totalEntregadas < mesesActivos ? 'var(--red)' : 'var(--txt3)';
 
     return `<tr style="border-bottom:1px solid var(--border)">
       <td style="padding:10px 14px;font-weight:600;color:var(--txt);position:sticky;left:0;background:#fff;z-index:1">${x(p.nombre)}</td>
       <td style="padding:10px 14px;font-size:12px;color:var(--txt2)">${x(roles[0]||'—')}</td>
       ${mesesCells}
-      <td style="padding:6px 8px;text-align:center;border-left:1px solid var(--border);font-size:11px;font-weight:700;font-family:var(--mono);color:${pctColor};white-space:nowrap">${totalEntregadas}/${mesActual}</td>
+      <td style="padding:6px 8px;text-align:center;border-left:1px solid var(--border);font-size:11px;font-weight:700;font-family:var(--mono);color:${pctColor};white-space:nowrap">${totalEntregadas}/${mesesActivos}${totalNC>0?`<br><span style="color:var(--txt3);font-weight:400">${totalNC}nc</span>`:''}</td>
     </tr>`;
   }).join('');
 }
@@ -3579,9 +3611,12 @@ async function toggleFacMes(personaId, nombre, anio, mes) {
     if (snap.exists()) existing = snap.data();
   } catch(e) {}
   const meses = existing?.meses || {};
-  meses[mes] = !meses[mes]; // toggle
+  // Ciclo: undefined → true (entregada) → 'nc' (no corresponde) → undefined
+  const actual = meses[mes];
+  if(!actual) meses[mes] = true;
+  else if(actual === true) meses[mes] = 'nc';
+  else delete meses[mes];
   await fsSaveTrackerFac({ id: docId, personaId, nombre, anio, meses });
-  // Re-render sin recargar todo
   await renderTrackerFacturas();
 }
 window.toggleFacMes = toggleFacMes;
@@ -3724,17 +3759,23 @@ async function eliminarGastoFuturo(id) {
 window.eliminarGastoFuturo = eliminarGastoFuturo;
 
 async function convertirGastoFuturo() {
-  // Pre-carga los datos del gasto en el modal de transacción y lo abre
   const g = S.gastosFuturos?.find(z=>z.id===document.getElementById('gf-id').value);
   if (!g) return;
+  // Buscar tipo de egreso que coincida con el área
+  const tipoEgreso = S.tipos.find(t=>t.clase==='Egreso' && t.area===g.area) || S.tipos.find(t=>t.clase==='Egreso');
   window.closeMoGastoFuturo();
   openMoTransaccion(null);
   setTimeout(()=>{
+    if(tipoEgreso) document.getElementById('tr-tipo').value = tipoEgreso.id;
     document.getElementById('tr-desc').value = g.concepto || '';
     document.getElementById('tr-monto').value = g.monto || '';
     document.getElementById('tr-area').value = g.area || 'General';
+    document.getElementById('tr-fecha').value = new Date().toISOString().slice(0,10);
+    // Marcar el gasto futuro como confirmado automáticamente
+    S.gastosFuturos = S.gastosFuturos.map(z=>z.id===g.id?{...z,estado:'Confirmado'}:z);
+    fsSaveGastoFuturo({...g,estado:'Confirmado'}).catch(()=>{});
   }, 100);
-  toast('Completá los datos faltantes y guardá la transacción');
+  toast('Completá tipo, fecha y guardá la transacción');
 }
 window.convertirGastoFuturo = convertirGastoFuturo;
 
@@ -4614,6 +4655,102 @@ async function eliminarCkItem(id){
   load(false);
 }
 window.eliminarCkItem=eliminarCkItem;
+
+// ── EXPORTAR TRANSACCIONES ──
+function getTransaccionesFiltradas(){
+  const q=(document.getElementById('ft-search')?.value||'').toLowerCase();
+  const tipoFil=document.getElementById('ft-tipo')?.value||'';
+  const ieFil=document.getElementById('ft-ie')?.value||'';
+  const areaFil=document.getElementById('ft-area')?.value||'';
+  const desde=document.getElementById('ft-desde')?.value||'';
+  const hasta=document.getElementById('ft-hasta')?.value||'';
+  return S.transacciones.filter(t=>{
+    if(q&&!((t.descripcion||'').toLowerCase().includes(q)||(t.tipoNombre||'').toLowerCase().includes(q)||(t.proveedorNombre||'').toLowerCase().includes(q))) return false;
+    if(tipoFil&&t.tipoId!==tipoFil) return false;
+    if(ieFil&&t.clase!==ieFil) return false;
+    if(areaFil&&t.area!==areaFil) return false;
+    if(desde&&(t.fecha||'')<desde+'-01') return false;
+    if(hasta&&(t.fecha||'')>hasta+'-31') return false;
+    return true;
+  });
+}
+
+window.exportXLSTransacciones = ()=>{
+  const rows=getTransaccionesFiltradas();
+  const data=[['Fecha','Tipo','Descripción','Proveedor','Área','Factura','Estado Pago','Medio','Monto']];
+  rows.forEach(t=>data.push([
+    t.fecha?t.fecha.split('-').reverse().join('/'):'—',
+    t.tipoNombre||'—', t.descripcion||'—', t.proveedorNombre||'—',
+    t.area||'—', t.factura||'No', t.estadoPago||'Pagado',
+    t.medio||'—', t.monto||0
+  ]));
+  const ws=XLSX.utils.aoa_to_sheet(data), wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Transacciones');
+  XLSX.writeFile(wb,`BFC_Transacciones_${new Date().toLocaleDateString('es-AR').replace(/\//g,'-')}.xlsx`);
+};
+
+window.exportPDFTransacciones = ()=>{
+  const rows=getTransaccionesFiltradas();
+  const totalIng=rows.filter(t=>t.clase==='Ingreso').reduce((s,t)=>s+(t.monto||0),0);
+  const totalEgr=rows.filter(t=>t.clase==='Egreso').reduce((s,t)=>s+(t.monto||0),0);
+  const trs=rows.map(t=>{
+    const esIng=t.clase==='Ingreso';
+    const fechaFmt=t.fecha?t.fecha.split('-').reverse().join('/'):'—';
+    return`<tr><td class="mono" style="white-space:nowrap">${fechaFmt}</td><td><span class="badge ${esIng?'b-ing':'b-egr'}" style="font-size:9px">${esIng?'▲':'▼'} ${x(t.tipoNombre||'—')}</span></td><td>${x(t.descripcion||'—')}</td><td style="font-size:10px">${x(t.proveedorNombre||'—')}</td><td>${x(t.area||'—')}</td><td class="r" style="color:${esIng?'#16a34a':'#C8102E'}">${f(t.monto)}</td></tr>`;
+  }).join('');
+  const html=`${pdfHeader('Transacciones')}
+    <div class="stats-row">
+      <div class="stat-box green"><div class="stat-lbl">Ingresos</div><div class="stat-val">${f(totalIng)}</div></div>
+      <div class="stat-box red"><div class="stat-lbl">Egresos</div><div class="stat-val">${f(totalEgr)}</div></div>
+      <div class="stat-box ${totalIng-totalEgr>=0?'green':'red'}"><div class="stat-lbl">Balance</div><div class="stat-val">${f(totalIng-totalEgr)}</div></div>
+      <div class="stat-box"><div class="stat-lbl">Registros</div><div class="stat-val">${rows.length}</div></div>
+    </div>
+    <table><thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Proveedor</th><th>Área</th><th class="r">Monto</th></tr></thead>
+    <tbody>${trs}</tbody></table>`;
+  pdfOpen(html,`BFC_Transacciones_${new Date().toLocaleDateString('es-AR').replace(/\//g,'-')}`);
+};
+
+// ── EXPORTAR TODOS LOS PAGOS CH ──
+window.exportXLSTodosPagos = ()=>{
+  const pagos=[...S.pagos].sort((a,b)=>(a.fechaPago||a.fecha||'').localeCompare(b.fechaPago||b.fecha||''));
+  const data=[['Período','Fecha','Nombre','Rol','Monto','Medio','CBU','Alias']];
+  pagos.forEach(pago=>{
+    (pago.detalles||[]).forEach(d=>{
+      const p=S.personal.find(z=>z.id===d.personaId)||{};
+      data.push([pago.periodo||'—', pago.fechaPago||pago.fecha||'—', d.nombre||'—', p.rol||'—', d.monto||0, d.medio||'—', p.cbu||'—', p.alias||'—']);
+    });
+  });
+  const ws=XLSX.utils.aoa_to_sheet(data), wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Pagos CH');
+  XLSX.writeFile(wb,'BFC_PagosCH_Historico.xlsx');
+};
+
+window.exportPDFTodosPagos = ()=>{
+  const pagos=[...S.pagos].sort((a,b)=>(b.fechaPago||b.fecha||'').localeCompare(a.fechaPago||a.fecha||''));
+  const totalGeneral=pagos.reduce((s,p)=>s+(p.totalAbonado||0),0);
+  const trs=pagos.map(pago=>`
+    <tr style="background:#f4f5f7">
+      <td colspan="4" style="padding:7px 10px;font-weight:700;font-size:12px">${x(pago.periodo||'—')} <span style="font-weight:400;color:#8b93a5;font-size:11px">· ${pago.fechaPago||pago.fecha||'—'}</span></td>
+      <td class="r" style="padding:7px 10px;font-weight:700;font-family:monospace;color:#C8102E">${f(pago.totalAbonado||0)}</td>
+    </tr>
+    ${(pago.detalles||[]).map(d=>`<tr>
+      <td style="padding:5px 10px 5px 18px">${x(d.nombre||'—')}</td>
+      <td style="padding:5px 10px;font-size:11px;color:#8b93a5">${x(d.medio||'—')}</td>
+      <td style="padding:5px 10px;font-family:monospace;font-size:10px;color:#8b93a5">${x(S.personal.find(z=>z.id===d.personaId)?.alias||'—')}</td>
+      <td style="padding:5px 10px;font-family:monospace;font-size:10px;color:#8b93a5">${x(S.personal.find(z=>z.id===d.personaId)?.cbu||'—')}</td>
+      <td class="r" style="padding:5px 10px;font-family:monospace">${f(d.monto||0)}</td>
+    </tr>`).join('')}`).join('');
+  const html=`${pdfHeader('Historial de Pagos — Capital Humano')}
+    <div class="stats-row">
+      <div class="stat-box red"><div class="stat-lbl">Total histórico</div><div class="stat-val">${f(totalGeneral)}</div></div>
+      <div class="stat-box"><div class="stat-lbl">Períodos</div><div class="stat-val">${pagos.length}</div></div>
+    </div>
+    <table><thead><tr><th>Nombre</th><th>Medio</th><th>Alias</th><th>CBU</th><th class="r">Monto</th></tr></thead>
+    <tbody>${trs}</tbody>
+    <tfoot><tr style="background:#f4f5f7"><td colspan="4" style="padding:8px 10px;font-weight:700">TOTAL GENERAL</td><td class="r" style="padding:8px 10px;font-weight:700;font-family:monospace;color:#C8102E">${f(totalGeneral)}</td></tr></tfoot>
+    </table>`;
+  pdfOpen(html,'BFC_PagosCH_Historico');
+};
 
 // ── HELPERS RENDER ──
 function renderBar(id,data,max,color=''){
