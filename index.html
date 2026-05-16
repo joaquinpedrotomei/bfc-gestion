@@ -307,7 +307,37 @@ tr.group-hd:hover{background:var(--bg3)!important}
 .cal-proj-row span:first-child{color:var(--txt2)}
 .cal-proj-saldo{font-family:var(--mono);font-weight:700}
 
-/* ── CHECKLIST ── */
+/* ── KANBAN ── */
+.kanban-board{display:flex;gap:16px;overflow-x:auto;padding-bottom:16px;align-items:flex-start;min-height:calc(100vh - 180px)}
+.kanban-col{flex:0 0 280px;background:var(--bg3);border-radius:10px;display:flex;flex-direction:column;max-height:calc(100vh - 180px)}
+.kanban-col-head{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border-radius:10px 10px 0 0;cursor:default}
+.kanban-col-title{font-size:13px;font-weight:700;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
+.kanban-col-count{font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(0,0,0,.12);color:inherit}
+.kanban-cards{flex:1;overflow-y:auto;padding:0 10px 10px;display:flex;flex-direction:column;gap:8px;min-height:60px}
+.kanban-add-col{flex:0 0 56px;display:flex;align-items:flex-start;padding-top:4px}
+.kanban-card{background:#fff;border-radius:8px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.08);cursor:grab;transition:box-shadow .15s,transform .15s;border-left:4px solid transparent;position:relative}
+.kanban-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.12);transform:translateY(-1px)}
+.kanban-card.dragging{opacity:.5;transform:scale(.98);cursor:grabbing}
+.kanban-card.drag-over{border-top:3px solid var(--blue)}
+.kcard-title{font-size:13px;font-weight:600;color:var(--txt);line-height:1.4;margin-bottom:6px}
+.kcard-desc{font-size:12px;color:var(--txt3);line-height:1.4;margin-bottom:8px;white-space:pre-wrap}
+.kcard-meta{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:6px}
+.kcard-tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.3px}
+.kcard-due{font-size:10px;font-weight:600;color:var(--txt3);display:flex;align-items:center;gap:3px}
+.kcard-due.vencida{color:var(--red)}.kcard-due.proxima{color:var(--amber)}
+.kcard-actions{position:absolute;top:8px;right:8px;display:none;gap:4px}
+.kanban-card:hover .kcard-actions{display:flex}
+.kcard-btn{padding:3px 6px;font-size:10px;border:none;border-radius:4px;cursor:pointer;background:var(--bg3);color:var(--txt3);transition:all .15s}
+.kcard-btn:hover{background:var(--border2);color:var(--txt)}
+.kanban-col-drop{border:2px dashed var(--border2);border-radius:8px;min-height:60px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--txt3);margin:0 10px}
+.kanban-col-drop.drag-active{border-color:var(--blue);background:var(--blue-lt)}
+.kanban-add-card{margin:4px 10px 0;padding:8px 10px;border:none;background:transparent;color:var(--txt3);font-size:12px;cursor:pointer;border-radius:6px;text-align:left;width:calc(100% - 20px);transition:all .15s}
+.kanban-add-card:hover{background:rgba(0,0,0,.06);color:var(--txt)}
+/* Prioridades */
+.kprio-alta{border-left-color:var(--red)!important}
+.kprio-media{border-left-color:var(--amber)!important}
+.kprio-baja{border-left-color:var(--green)!important}
+.kprio-sin{border-left-color:var(--border)!important}
 .ck-tabs{display:flex;gap:3px;margin-bottom:20px;border-bottom:2px solid var(--border);overflow-x:auto;scrollbar-width:none}
 .ck-tab{padding:10px 16px;cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:var(--txt3);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--sans)}
 .ck-tab:hover{color:var(--txt2)}.ck-tab.active{color:var(--red);border-bottom-color:var(--red)}
@@ -396,6 +426,7 @@ tr.group-hd:hover{background:var(--bg3)!important}
     <div class="snav-item" data-section="ch"><span class="sn-icon">👥</span>Capital Humano</div>
     <div class="snav-item" data-section="cont"><span class="sn-icon">💰</span>Contabilidad</div>
     <div class="snav-item" data-section="checklist"><span class="sn-icon">✅</span>Checklist</div>
+    <div class="snav-item" data-section="pendientes"><span class="sn-icon">📋</span>Pendientes</div>
   </div>
 
   <div class="main">
@@ -1077,7 +1108,81 @@ tr.group-hd:hover{background:var(--bg3)!important}
       </div>
     </div>
 
+<!-- ══════════════════ PENDIENTES ══════════════════ -->
+<div class="section-panel" id="sec-pendientes">
+  <div class="main" style="max-width:none">
+    <div class="ph" style="margin-bottom:16px">
+      <div><h2>Pendientes</h2><p>Tablero de seguimiento de temas</p></div>
+      <div class="ph-actions">
+        <button class="btn btn-ghost btn-sm" onclick="openMoKCol()">+ Columna</button>
+        <button class="btn btn-primary" onclick="openMoKCard()">+ Tarjeta</button>
+      </div>
+    </div>
+    <div class="kanban-board" id="kanban-board"></div>
+  </div>
+</div>
+
 </div><!-- /app -->
+
+<!-- Modal Tarjeta Kanban -->
+<div class="mo-overlay" id="mo-kcard">
+  <div class="mo" style="max-width:500px">
+    <div class="mo-hd"><h3 id="mo-kcard-title">Nueva Tarjeta</h3><span class="mo-x" onclick="closeMoKCard()">×</span></div>
+    <div class="mo-bd">
+      <input type="hidden" id="kcard-id">
+      <input type="hidden" id="kcard-col-id">
+      <div class="fg">
+        <div class="fg-row ff"><label>Título *</label><input id="kcard-titulo" type="text" placeholder="¿Qué hay que hacer?"></div>
+        <div class="fg-row ff"><label>Descripción</label><textarea id="kcard-desc" style="min-height:80px" placeholder="Detalles, contexto, links…"></textarea></div>
+        <div class="fg-row"><label>Prioridad</label>
+          <select id="kcard-prio">
+            <option value="sin">Sin prioridad</option>
+            <option value="alta">🔴 Alta</option>
+            <option value="media">🟡 Media</option>
+            <option value="baja">🟢 Baja</option>
+          </select>
+        </div>
+        <div class="fg-row"><label>Columna</label><select id="kcard-col-sel"></select></div>
+        <div class="fg-row"><label>Fecha límite</label><input id="kcard-due" type="date"></div>
+        <div class="fg-row ff"><label>Etiqueta</label><input id="kcard-tag" type="text" placeholder="Ej: AFA, Inferiores, Urgente…"></div>
+      </div>
+    </div>
+    <div class="mo-ft">
+      <button class="btn btn-danger btn-sm" id="kcard-del-btn" style="display:none;margin-right:auto" onclick="eliminarKCard()">Eliminar</button>
+      <button class="btn btn-ghost" onclick="closeMoKCard()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveKCard()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Columna Kanban -->
+<div class="mo-overlay" id="mo-kcol">
+  <div class="mo" style="max-width:380px">
+    <div class="mo-hd"><h3 id="mo-kcol-title">Nueva Columna</h3><span class="mo-x" onclick="closeMoKCol()">×</span></div>
+    <div class="mo-bd">
+      <input type="hidden" id="kcol-id">
+      <div class="fg">
+        <div class="fg-row ff"><label>Nombre *</label><input id="kcol-nombre" type="text" placeholder="Ej: En proceso, Esperando respuesta…"></div>
+        <div class="fg-row"><label>Color</label>
+          <select id="kcol-color">
+            <option value="#8b93a5">⬜ Gris (default)</option>
+            <option value="#C8102E">🔴 Rojo</option>
+            <option value="#2563eb">🔵 Azul</option>
+            <option value="#16a34a">🟢 Verde</option>
+            <option value="#d97706">🟡 Naranja</option>
+            <option value="#7c3aed">🟣 Violeta</option>
+            <option value="#0891b2">🩵 Cyan</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="mo-ft">
+      <button class="btn btn-danger btn-sm" id="kcol-del-btn" style="display:none;margin-right:auto" onclick="eliminarKCol()">Eliminar</button>
+      <button class="btn btn-ghost" onclick="closeMoKCol()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveKCol()">Guardar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══ MODALES CAPITAL HUMANO ══ -->
 <!-- Modal Persona -->
@@ -1729,6 +1834,7 @@ document.querySelectorAll('.snav-item').forEach(item=>{
     if(sec) sec.classList.add('active');
     if(item.dataset.section==='dashboard') renderDashboard();
     if(item.dataset.section==='checklist'){ S.partidos=null; S.ckItems=null; renderPartidos(); }
+    if(item.dataset.section==='pendientes'){ S.kCols=null; S.kCards=null; initKanban(); }
   });
 });
 
@@ -4751,6 +4857,222 @@ window.exportPDFTodosPagos = ()=>{
     </table>`;
   pdfOpen(html,'BFC_PagosCH_Historico');
 };
+
+// ══ KANBAN — PENDIENTES ══
+
+// Firestore
+async function fsGetKCols(){ const s=await getDocs(collection(db,'kanban_cols')); return s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.orden||0)-(b.orden||0)); }
+async function fsSaveKCol(c){ await setDoc(doc(db,'kanban_cols',c.id),c); }
+async function fsDeleteKCol(id){ await deleteDoc(doc(db,'kanban_cols',id)); }
+async function fsGetKCards(){ const s=await getDocs(collection(db,'kanban_cards')); return s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.orden||0)-(b.orden||0)); }
+async function fsSaveKCard(c){ await setDoc(doc(db,'kanban_cards',c.id),c); }
+async function fsDeleteKCard(id){ await deleteDoc(doc(db,'kanban_cards',id)); }
+
+// Columnas default al inicializar
+const KCOLS_DEFAULT=[
+  {id:'col-pend',nombre:'Pendiente',color:'#8b93a5',orden:0},
+  {id:'col-prog',nombre:'En Proceso',color:'#2563eb',orden:1},
+  {id:'col-esp', nombre:'Esperando',color:'#d97706',orden:2},
+  {id:'col-done',nombre:'Listo',    color:'#16a34a',orden:3},
+];
+
+async function initKanban(){
+  if(!S.kCols){
+    try{ S.kCols=await fsGetKCols(); }catch(e){ S.kCols=[]; }
+    if(!S.kCols.length){
+      for(const c of KCOLS_DEFAULT) await fsSaveKCol(c).catch(()=>{});
+      S.kCols=KCOLS_DEFAULT;
+    }
+  }
+  if(!S.kCards){ try{ S.kCards=await fsGetKCards(); }catch(e){ S.kCards=[]; } }
+  renderKanban();
+}
+
+function renderKanban(){
+  const board=document.getElementById('kanban-board'); if(!board) return;
+  const cols=S.kCols||[], cards=S.kCards||[];
+
+  board.innerHTML=cols.map(col=>{
+    const colCards=cards.filter(c=>c.colId===col.id).sort((a,b)=>(a.orden||0)-(b.orden||0));
+    const cardsHtml=colCards.map(c=>buildKCardHTML(c)).join('');
+    return `<div class="kanban-col" id="kcol-${col.id}" data-col="${col.id}"
+        ondragover="onKDragOver(event,'${col.id}')" ondrop="onKDrop(event,'${col.id}')" ondragleave="onKDragLeave(event)">
+      <div class="kanban-col-head" style="color:${col.color}">
+        <span class="kanban-col-title">
+          <span style="width:10px;height:10px;border-radius:50%;background:${col.color};display:inline-block"></span>
+          ${x(col.nombre)}
+          <span class="kanban-col-count" style="background:${col.color}20;color:${col.color}">${colCards.length}</span>
+        </span>
+        <button class="kcard-btn" onclick="openMoKCol('${col.id}')" style="font-size:11px">…</button>
+      </div>
+      <div class="kanban-cards" id="kcardsof-${col.id}">${cardsHtml}</div>
+      <button class="kanban-add-card" onclick="openMoKCard(null,'${col.id}')">+ Agregar tarjeta</button>
+    </div>`;
+  }).join('')
+  + `<div class="kanban-add-col">
+      <button class="btn btn-ghost btn-sm" onclick="openMoKCol()" style="white-space:nowrap">+ Columna</button>
+    </div>`;
+
+  // Inicializar drag en todas las tarjetas
+  board.querySelectorAll('.kanban-card').forEach(el=>{
+    el.addEventListener('dragstart', onKDragStart);
+    el.addEventListener('dragend',   onKDragEnd);
+  });
+}
+
+function buildKCardHTML(c){
+  const prioClass={alta:'kprio-alta',media:'kprio-media',baja:'kprio-baja',sin:'kprio-sin'}[c.prio||'sin']||'kprio-sin';
+  const today=new Date().toISOString().slice(0,10);
+  let dueHTML='';
+  if(c.due){
+    const diff=Math.ceil((new Date(c.due)-new Date(today))/(1000*60*60*24));
+    const cls=diff<0?'vencida':diff<=3?'proxima':'';
+    const label=diff<0?`Venció ${c.due}`:diff===0?'Hoy':diff===1?'Mañana':c.due;
+    dueHTML=`<span class="kcard-due ${cls}">📅 ${label}</span>`;
+  }
+  const tagHTML=c.tag?`<span class="kcard-tag" style="background:${c.tagColor||'var(--bg3)'};color:${c.tagTextColor||'var(--txt3)'}">${x(c.tag)}</span>`:'';
+  return `<div class="kanban-card ${prioClass}" id="kcard-${c.id}" draggable="true" data-id="${c.id}" data-col="${c.colId}">
+    <div class="kcard-actions">
+      <button class="kcard-btn" onclick="openMoKCard('${c.id}')">✏</button>
+    </div>
+    <div class="kcard-title">${x(c.titulo||'Sin título')}</div>
+    ${c.desc?`<div class="kcard-desc">${x(c.desc)}</div>`:''}
+    <div class="kcard-meta">${dueHTML}${tagHTML}</div>
+  </div>`;
+}
+
+// ── Drag & Drop ──
+let _dragId=null, _dragColOrigin=null;
+
+function onKDragStart(e){
+  _dragId=e.currentTarget.dataset.id;
+  _dragColOrigin=e.currentTarget.dataset.col;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+}
+function onKDragEnd(e){ e.currentTarget.classList.remove('dragging'); document.querySelectorAll('.kanban-col-drop.drag-active,.kanban-cards').forEach(el=>el.classList.remove('drag-active')); }
+function onKDragOver(e,colId){ e.preventDefault(); e.dataTransfer.dropEffect='move'; const col=document.getElementById('kcol-'+colId); if(col) col.querySelector('.kanban-cards')?.classList.add('drag-active'); }
+function onKDragLeave(e){ if(!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.querySelector('.kanban-cards')?.classList.remove('drag-active'); }
+
+async function onKDrop(e,colId){
+  e.preventDefault();
+  document.querySelectorAll('.kanban-cards').forEach(el=>el.classList.remove('drag-active'));
+  if(!_dragId) return;
+  const card=S.kCards.find(c=>c.id===_dragId); if(!card) return;
+  if(card.colId===colId && _dragColOrigin===colId){ _dragId=null; return; }
+  load(true);
+  try{
+    // Contar tarjetas en columna destino para poner al final
+    const destCards=S.kCards.filter(c=>c.colId===colId);
+    const updated={...card,colId,orden:destCards.length};
+    await fsSaveKCard(updated);
+    S.kCards=await fsGetKCards();
+    renderKanban();
+  }catch(e){ toast('Error al mover tarjeta',true); }
+  load(false);
+  _dragId=null;
+}
+window.onKDragOver=onKDragOver; window.onKDrop=onKDrop; window.onKDragLeave=onKDragLeave;
+
+// ── Modal Tarjeta ──
+function openMoKCard(id, colIdDefault){
+  const c=id?(S.kCards||[]).find(z=>z.id===id):null;
+  document.getElementById('mo-kcard-title').textContent=c?'Editar Tarjeta':'Nueva Tarjeta';
+  document.getElementById('kcard-id').value=c?.id||'';
+  document.getElementById('kcard-col-id').value=c?.colId||colIdDefault||'';
+  document.getElementById('kcard-titulo').value=c?.titulo||'';
+  document.getElementById('kcard-desc').value=c?.desc||'';
+  document.getElementById('kcard-prio').value=c?.prio||'sin';
+  document.getElementById('kcard-due').value=c?.due||'';
+  document.getElementById('kcard-tag').value=c?.tag||'';
+  document.getElementById('kcard-del-btn').style.display=c?'':'none';
+  // Llenar selector de columnas
+  const sel=document.getElementById('kcard-col-sel');
+  sel.innerHTML=(S.kCols||[]).map(col=>`<option value="${col.id}" ${(c?.colId||colIdDefault)===col.id?'selected':''}>${x(col.nombre)}</option>`).join('');
+  document.getElementById('mo-kcard').classList.add('open');
+}
+window.openMoKCard=openMoKCard;
+window.closeMoKCard=()=>document.getElementById('mo-kcard').classList.remove('open');
+
+async function saveKCard(){
+  const titulo=document.getElementById('kcard-titulo').value.trim();
+  if(!titulo){ toast('Título requerido',true); return; }
+  const colId=document.getElementById('kcard-col-sel').value||document.getElementById('kcard-col-id').value;
+  const existingId=document.getElementById('kcard-id').value;
+  const existing=existingId?(S.kCards||[]).find(z=>z.id===existingId):null;
+  const orden=existing?.orden ?? ((S.kCards||[]).filter(c=>c.colId===colId).length);
+  // Colores de tag basados en texto
+  const tag=document.getElementById('kcard-tag').value.trim();
+  const tagColors={'afa':['#ffe0e0','#C8102E'],'inferiores':['#eff6ff','#2563eb'],'urgente':['#fdf0f2','#C8102E'],'admin':['#f5f3ff','#7c3aed']};
+  const tcKey=tag.toLowerCase();
+  const [tagColor,tagTextColor]=tagColors[tcKey]||['var(--bg3)','var(--txt3)'];
+  const card={
+    id:existingId||autoId(), titulo, colId, orden,
+    desc:document.getElementById('kcard-desc').value,
+    prio:document.getElementById('kcard-prio').value,
+    due:document.getElementById('kcard-due').value,
+    tag, tagColor, tagTextColor,
+    creadoEn:existing?.creadoEn||new Date().toISOString(),
+    actualizadoEn:new Date().toISOString()
+  };
+  load(true);
+  try{ await fsSaveKCard(card); S.kCards=await fsGetKCards(); window.closeMoKCard(); renderKanban(); toast('Guardado'); }
+  catch(e){ toast('Error',true); }
+  load(false);
+}
+window.saveKCard=saveKCard;
+
+async function eliminarKCard(){
+  const id=document.getElementById('kcard-id').value;
+  if(!confirm('¿Eliminar esta tarjeta?')) return;
+  load(true);
+  try{ await fsDeleteKCard(id); S.kCards=await fsGetKCards(); window.closeMoKCard(); renderKanban(); toast('Eliminada'); }
+  catch(e){ toast('Error',true); }
+  load(false);
+}
+window.eliminarKCard=eliminarKCard;
+
+// ── Modal Columna ──
+function openMoKCol(id){
+  const c=id?(S.kCols||[]).find(z=>z.id===id):null;
+  document.getElementById('mo-kcol-title').textContent=c?'Editar Columna':'Nueva Columna';
+  document.getElementById('kcol-id').value=c?.id||'';
+  document.getElementById('kcol-nombre').value=c?.nombre||'';
+  document.getElementById('kcol-color').value=c?.color||'#8b93a5';
+  document.getElementById('kcol-del-btn').style.display=c?'':'none';
+  document.getElementById('mo-kcol').classList.add('open');
+}
+window.openMoKCol=openMoKCol;
+window.closeMoKCol=()=>document.getElementById('mo-kcol').classList.remove('open');
+
+async function saveKCol(){
+  const nombre=document.getElementById('kcol-nombre').value.trim();
+  if(!nombre){ toast('Nombre requerido',true); return; }
+  const existingId=document.getElementById('kcol-id').value;
+  const existing=existingId?(S.kCols||[]).find(z=>z.id===existingId):null;
+  const col={
+    id:existingId||autoId(), nombre,
+    color:document.getElementById('kcol-color').value,
+    orden:existing?.orden??(S.kCols||[]).length
+  };
+  load(true);
+  try{ await fsSaveKCol(col); S.kCols=await fsGetKCols(); window.closeMoKCol(); renderKanban(); toast('Columna guardada'); }
+  catch(e){ toast('Error',true); }
+  load(false);
+}
+window.saveKCol=saveKCol;
+
+async function eliminarKCol(){
+  const id=document.getElementById('kcol-id').value;
+  const tieneCards=(S.kCards||[]).some(c=>c.colId===id);
+  if(tieneCards){ toast('Mové o eliminá las tarjetas antes de borrar la columna',true); return; }
+  if(!confirm('¿Eliminar esta columna?')) return;
+  load(true);
+  try{ await fsDeleteKCol(id); S.kCols=await fsGetKCols(); window.closeMoKCol(); renderKanban(); toast('Columna eliminada'); }
+  catch(e){ toast('Error',true); }
+  load(false);
+}
+window.eliminarKCol=eliminarKCol;
 
 // ── HELPERS RENDER ──
 function renderBar(id,data,max,color=''){
