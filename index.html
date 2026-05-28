@@ -4227,7 +4227,8 @@ function buildOrdenHTML(orden){
   const total=orden.total||0;
   const nro=orden.nro||'';
   const rows=items.map(i=>`<tr>
-    <td class="nm">${x(i.proveedorNombre||i.descripcion||'—')}</td>
+    <td class="nm">${x(i.proveedorNombre||'—')}</td>
+    <td>${x(i.descripcion||'—')}</td>
     <td class="mono">${x(i.cbu||'—')}</td>
     <td class="mono">${x(i.alias||'—')}</td>
     <td>${x(i.medio||'—')}</td>
@@ -4241,9 +4242,9 @@ function buildOrdenHTML(orden){
       ${nro?`<div class="stat-box"><div class="stat-lbl">N° Orden</div><div class="stat-val" style="color:#C8102E">#${nro}</div></div>`:''}
     </div>
     ${orden.observaciones?`<p style="margin-bottom:14px;font-size:12px;color:#4a5060;background:#f4f5f7;padding:10px 14px;border-radius:6px;border-left:3px solid #C8102E">${x(orden.observaciones)}</p>`:''}
-    <table><thead><tr><th>Proveedor / Concepto</th><th>CBU</th><th>Alias</th><th>Medio</th><th class="r">Monto</th></tr></thead>
+    <table><thead><tr><th>Proveedor</th><th>Descripción / Detalle</th><th>CBU</th><th>Alias</th><th>Medio</th><th class="r">Monto</th></tr></thead>
     <tbody>${rows}</tbody>
-    <tfoot><tr style="background:#f4f5f7"><td colspan="4" style="padding:8px 10px;font-weight:700">TOTAL</td><td class="r" style="padding:8px 10px;font-weight:700;font-family:monospace;color:#C8102E">${f(total)}</td></tr></tfoot>
+    <tfoot><tr style="background:#f4f5f7"><td colspan="5" style="padding:8px 10px;font-weight:700">TOTAL</td><td class="r" style="padding:8px 10px;font-weight:700;font-family:monospace;color:#C8102E">${f(total)}</td></tr></tfoot>
     </table>`;
 }
 
