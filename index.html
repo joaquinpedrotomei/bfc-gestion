@@ -597,6 +597,8 @@ tr.group-hd:hover{background:var(--bg3)!important}
                 <option value="">Todas</option><option>Primera División</option><option>Reserva</option><option>4ta División</option><option>5ta División</option><option>6ta División</option><option>7ma División</option><option>8va División</option><option>9na División</option>
               </select>
             </div>
+            <div class="fg-row" style="min-width:120px"><label>Monto mínimo ($)</label><input id="pp-monto-min" type="number" min="0" placeholder="0" oninput="filtrarPagoGrid()" class="fi" style="padding:9px 11px;font-family:var(--mono)"></div>
+            <div class="fg-row" style="min-width:120px"><label>Monto máximo ($)</label><input id="pp-monto-max" type="number" min="0" placeholder="Sin límite" oninput="filtrarPagoGrid()" class="fi" style="padding:9px 11px;font-family:var(--mono)"></div>
             <div class="fg-row" style="flex:2;min-width:180px"><label>Observaciones</label><input id="po" type="text"></div>
           </div>
           <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
@@ -2328,6 +2330,8 @@ async function showNuevoPago(pagoId){
   document.getElementById('pag-save-btn').textContent=pagoId?'Guardar cambios':'Registrar';
   document.getElementById('pag-del-btn').style.display=pagoId?'':'none';
   document.getElementById('pp-cat').value='';
+  const minEl=document.getElementById('pp-monto-min'); if(minEl) minEl.value='';
+  const maxEl=document.getElementById('pp-monto-max'); if(maxEl) maxEl.value='';
   const activos=S.personal.filter(p=>p.estado==='Activo');
   let detMap={};
   if(pagoId){ const pago=S.pagos.find(p=>p.id===pagoId); document.getElementById('pp').value=pago?.periodo||''; document.getElementById('pp-fecha').value=pago?.fechaPago||''; document.getElementById('po').value=pago?.observaciones||''; (pago?.detalles||[]).forEach(d=>{detMap[d.personaId]={monto:d.monto,medio:d.medio};}); }
@@ -2344,7 +2348,7 @@ async function showNuevoPago(pagoId){
       const enDet=p.id in detMap, monto=enDet?detMap[p.id].monto:((p.basico||0)+(p.bono||0));
       const checked=pagoId?enDet:true, isSub=personas.length>1;
       const detActual=pagoId&&enDet?detMap[p.id]:null;
-      const medioDefault=detActual?.medio||(p.factura==='Si'?'Transferencia':'Efectivo');
+      const medioDefault=detActual?.medio||'Transferencia';
       const row=document.createElement('div'); row.className='pgr';
       row.dataset.id=p.id; row.dataset.nombre=p.nombre; row.dataset.rol=roles[0]||''; row.dataset.cat=pCats[0]||'';
       const nameHtml=isSub?`<span style="padding-left:18px;color:var(--txt3);font-size:12px">└ ${roles.join(', ')||'—'}</span>`:`<span>${x(p.nombre)}</span>`;
@@ -2360,8 +2364,20 @@ window.showNuevoPago = showNuevoPago;
 
 window.filtrarPagoGrid = ()=>{
   const cat=document.getElementById('pp-cat').value;
-  document.querySelectorAll('.pgr').forEach(r=>{ r.style.display=(!cat||r.dataset.cat===cat)?'':'none'; });
-  document.querySelectorAll('#pgrid > div:not(.pgr)').forEach(hd=>{ let next=hd.nextElementSibling,allHidden=true; while(next&&next.classList.contains('pgr')){ if(next.style.display!=='none'){allHidden=false;break;} next=next.nextElementSibling; } hd.style.display=allHidden?'none':''; });
+  const montoMin=parseFloat(document.getElementById('pp-monto-min')?.value)||0;
+  const montoMax=parseFloat(document.getElementById('pp-monto-max')?.value)||Infinity;
+  document.querySelectorAll('.pgr').forEach(r=>{
+    const monto=parseFloat(r.querySelector('.pm')?.value)||0;
+    const catOk=!cat||r.dataset.cat===cat;
+    const montoOk=monto>=montoMin&&monto<=montoMax;
+    r.style.display=(catOk&&montoOk)?'':'none';
+  });
+  // Ocultar headers de grupo si todos sus hijos están ocultos
+  document.querySelectorAll('#pgrid > div:not(.pgr)').forEach(hd=>{
+    let next=hd.nextElementSibling, allHidden=true;
+    while(next&&next.classList.contains('pgr')){ if(next.style.display!=='none'){allHidden=false;break;} next=next.nextElementSibling; }
+    hd.style.display=allHidden?'none':'';
+  });
   calcPagTotal();
 };
 
@@ -2439,11 +2455,22 @@ window.exportXLS = ()=>{
 };
 
 window.exportPDF = ()=>{
-  const per=document.getElementById('pp').value||'—', obs=document.getElementById('po').value, rows=[];
-  document.querySelectorAll('.pgr').forEach(r=>{ if(r.style.display==='none'||!r.querySelector('.pc').checked) return; const p=S.personal.find(z=>z.id===r.dataset.id)||{}; const medio=r.querySelector('.pmed')?.value||''; rows.push(`<tr><td>${x(r.dataset.nombre)}</td><td>${x(r.dataset.rol)}</td><td>${x(medio)}</td><td class="mono">${x(p.cbu||'—')}</td><td class="mono">${x(p.alias||'—')}</td><td class="r"><strong>${f(parseFloat(r.querySelector('.pm').value)||0)}</strong></td></tr>`); });
+  const per=document.getElementById('pp').value||'—', obs=document.getElementById('po').value;
+  // Recopilar filas con monto para ordenar
+  const filas=[];
+  document.querySelectorAll('.pgr').forEach(r=>{
+    if(r.style.display==='none'||!r.querySelector('.pc').checked) return;
+    const p=S.personal.find(z=>z.id===r.dataset.id)||{};
+    const medio=r.querySelector('.pmed')?.value||'';
+    const monto=parseFloat(r.querySelector('.pm').value)||0;
+    filas.push({nombre:r.dataset.nombre,rol:r.dataset.rol,medio,cbu:p.cbu||'—',alias:p.alias||'—',monto});
+  });
+  // Ordenar mayor a menor
+  filas.sort((a,b)=>b.monto-a.monto);
+  const rows=filas.map(fi=>`<tr><td>${x(fi.nombre)}</td><td>${x(fi.rol)}</td><td>${x(fi.medio)}</td><td class="mono">${x(fi.cbu)}</td><td class="mono">${x(fi.alias)}</td><td class="r"><strong>${f(fi.monto)}</strong></td></tr>`);
   const total=document.getElementById('ptot').textContent;
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:sans-serif;padding:32px;color:#111;font-size:12px}h1{font-size:17px;margin-bottom:3px}.sub{color:#666;font-size:11px;margin-bottom:20px}table{width:100%;border-collapse:collapse}th{background:#f5f5f5;border-bottom:2px solid #ddd;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px}td{padding:7px 10px;border-bottom:1px solid #eee}.mono{font-family:monospace;font-size:11px}.r{text-align:right}.tot{text-align:right;margin-top:14px;font-size:14px;font-weight:700}@media print{button{display:none}}</style></head><body><h1>Orden de Pago — ${x(per)}</h1><div class="sub">Barrancas FC · ${new Date().toLocaleDateString('es-AR')}${obs?' · '+x(obs):''}</div><table><thead><tr><th>Nombre</th><th>Rol</th><th>Medio</th><th>CBU</th><th>Alias</th><th class="r">Monto</th></tr></thead><tbody>${rows.join('')}</tbody></table><div class="tot">Total: ${total}</div></body></html>`;
-  const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400);
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BFC_Pago_${per.replace(/\s/g,'_')}</title><style>body{font-family:sans-serif;padding:32px;color:#111;font-size:12px}h1{font-size:17px;margin-bottom:3px}.sub{color:#666;font-size:11px;margin-bottom:20px}table{width:100%;border-collapse:collapse}th{background:#f5f5f5;border-bottom:2px solid #ddd;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px}td{padding:7px 10px;border-bottom:1px solid #eee}.mono{font-family:monospace;font-size:11px}.r{text-align:right}.tot{text-align:right;margin-top:14px;font-size:14px;font-weight:700}@media print{button{display:none}}</style></head><body><h1>Orden de Pago — ${x(per)}</h1><div class="sub">Barrancas FC · ${new Date().toLocaleDateString('es-AR')}${obs?' · '+x(obs):''}</div><table><thead><tr><th>Nombre</th><th>Rol</th><th>Medio</th><th>CBU</th><th>Alias</th><th class="r">Monto</th></tr></thead><tbody>${rows.join('')}</tbody></table><div class="tot">Total: ${total}</div><script>window.onload=()=>{document.title='BFC_Pago_${per.replace(/\s/g,'_')}';window.print();}<\/script></body></html>`;
+  const w=window.open('','_blank'); w.document.write(html); w.document.close();
 };
 
 // ── PROYECCIÓN ──
