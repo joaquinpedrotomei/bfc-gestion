@@ -2456,20 +2456,28 @@ window.exportXLS = ()=>{
 
 window.exportPDF = ()=>{
   const per=document.getElementById('pp').value||'—', obs=document.getElementById('po').value;
-  // Recopilar filas con monto para ordenar
-  const filas=[];
+  // Recopilar filas
+  const raw=[];
   document.querySelectorAll('.pgr').forEach(r=>{
     if(r.style.display==='none'||!r.querySelector('.pc').checked) return;
     const p=S.personal.find(z=>z.id===r.dataset.id)||{};
-    const medio=r.querySelector('.pmed')?.value||'';
-    const monto=parseFloat(r.querySelector('.pm').value)||0;
-    filas.push({nombre:r.dataset.nombre,rol:r.dataset.rol,medio,cbu:p.cbu||'—',alias:p.alias||'—',monto});
+    raw.push({nombre:r.dataset.nombre,rol:r.dataset.rol,medio:r.querySelector('.pmed')?.value||'',cbu:p.cbu||'—',alias:p.alias||'—',monto:parseFloat(r.querySelector('.pm').value)||0});
+  });
+  // Agrupar por nombre — sumar montos, unir roles, usar mismo CBU/alias
+  const grouped={};
+  raw.forEach(fi=>{
+    if(!grouped[fi.nombre]){
+      grouped[fi.nombre]={...fi, roles:[fi.rol]};
+    } else {
+      grouped[fi.nombre].monto+=fi.monto;
+      if(!grouped[fi.nombre].roles.includes(fi.rol)) grouped[fi.nombre].roles.push(fi.rol);
+    }
   });
   // Ordenar mayor a menor
-  filas.sort((a,b)=>b.monto-a.monto);
-  const rows=filas.map(fi=>`<tr><td>${x(fi.nombre)}</td><td>${x(fi.rol)}</td><td>${x(fi.medio)}</td><td class="mono">${x(fi.cbu)}</td><td class="mono">${x(fi.alias)}</td><td class="r"><strong>${f(fi.monto)}</strong></td></tr>`);
-  const total=document.getElementById('ptot').textContent;
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BFC_Pago_${per.replace(/\s/g,'_')}</title><style>body{font-family:sans-serif;padding:32px;color:#111;font-size:12px}h1{font-size:17px;margin-bottom:3px}.sub{color:#666;font-size:11px;margin-bottom:20px}table{width:100%;border-collapse:collapse}th{background:#f5f5f5;border-bottom:2px solid #ddd;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px}td{padding:7px 10px;border-bottom:1px solid #eee}.mono{font-family:monospace;font-size:11px}.r{text-align:right}.tot{text-align:right;margin-top:14px;font-size:14px;font-weight:700}@media print{button{display:none}}</style></head><body><h1>Orden de Pago — ${x(per)}</h1><div class="sub">Barrancas FC · ${new Date().toLocaleDateString('es-AR')}${obs?' · '+x(obs):''}</div><table><thead><tr><th>Nombre</th><th>Rol</th><th>Medio</th><th>CBU</th><th>Alias</th><th class="r">Monto</th></tr></thead><tbody>${rows.join('')}</tbody></table><div class="tot">Total: ${total}</div><script>window.onload=()=>{document.title='BFC_Pago_${per.replace(/\s/g,'_')}';window.print();}<\/script></body></html>`;
+  const filas=Object.values(grouped).sort((a,b)=>b.monto-a.monto);
+  const rows=filas.map(fi=>`<tr><td>${x(fi.nombre)}</td><td>${x(fi.roles.join(', '))}</td><td>${x(fi.medio)}</td><td class="mono">${x(fi.cbu)}</td><td class="mono">${x(fi.alias)}</td><td class="r"><strong>${f(fi.monto)}</strong></td></tr>`);
+  const total=filas.reduce((s,fi)=>s+fi.monto,0);
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BFC_Pago_${per.replace(/\s/g,'_')}</title><style>body{font-family:sans-serif;padding:32px;color:#111;font-size:12px}h1{font-size:17px;margin-bottom:3px}.sub{color:#666;font-size:11px;margin-bottom:20px}table{width:100%;border-collapse:collapse}th{background:#f5f5f5;border-bottom:2px solid #ddd;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px}td{padding:7px 10px;border-bottom:1px solid #eee}.mono{font-family:monospace;font-size:11px}.r{text-align:right}.tot{text-align:right;margin-top:14px;font-size:14px;font-weight:700}@media print{button{display:none}}</style></head><body><h1>Orden de Pago — ${x(per)}</h1><div class="sub">Barrancas FC · ${new Date().toLocaleDateString('es-AR')}${obs?' · '+x(obs):''}</div><table><thead><tr><th>Nombre</th><th>Rol</th><th>Medio</th><th>CBU</th><th>Alias</th><th class="r">Monto</th></tr></thead><tbody>${rows.join('')}</tbody></table><div class="tot">Total: ${f(total)}</div><script>window.onload=()=>{document.title='BFC_Pago_${per.replace(/\s/g,'_')}';window.print();}<\/script></body></html>`;
   const w=window.open('','_blank'); w.document.write(html); w.document.close();
 };
 
